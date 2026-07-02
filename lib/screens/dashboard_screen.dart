@@ -86,7 +86,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         cusID: user?.customerId?.toString() ?? 'N/A',
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
-        advance:customerDetails.advance.toDouble();
+        advance:customerDetails?.advance.toString()??"0",
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
         onSettingsTap: () => Navigator.pushNamed(context, '/settings'),

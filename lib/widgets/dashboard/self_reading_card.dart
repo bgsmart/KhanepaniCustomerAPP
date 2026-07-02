@@ -1,4 +1,5 @@
 // lib/widgets/dashboard/self_reading_card.dart
+import 'package:KhanepaniApp/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 
@@ -133,15 +134,8 @@ class SelfReadingCard extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
+        color: const Color.fromARGB(255, 4, 65, 134),
         borderRadius: BorderRadius.circular(24),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            colorScheme.tertiaryFixed,
-            colorScheme.tertiaryFixed.withValues(alpha: 0.85),
-          ],
-        ),
         boxShadow: [
           BoxShadow(
             color: colorScheme.tertiary.withValues(alpha: 0.25),
@@ -172,7 +166,7 @@ class SelfReadingCard extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'NEXT SELF READING',
+                    'NEXT READING DATE',
                     style: textTheme.labelSmall?.copyWith(
                       color: colorScheme.onTertiaryFixedVariant
                           .withValues(alpha: 0.7),
@@ -242,7 +236,7 @@ class SelfReadingCard extends StatelessWidget {
             ElevatedButton(
               onPressed: onSelfReadingTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.secondary,
+                backgroundColor: colorScheme.error,
                 foregroundColor: colorScheme.onPrimary,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -298,11 +292,11 @@ class _CalendarDateBlock extends StatelessWidget {
     return Container(
       width: 76,
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 232, 239, 231),
+        color: const Color.fromARGB(255, 213, 189, 189),
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.12),
+            color: const Color.fromARGB(255, 234, 232, 232).withValues(alpha: 0.12),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

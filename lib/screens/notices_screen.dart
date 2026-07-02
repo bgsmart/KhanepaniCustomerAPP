@@ -38,6 +38,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
         cusID: user?.customerId?.toString() ?? 'N/A',
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
+        advance: customerDetails?.advance.toString() ?? "0",
         showBackButton: true,  // Enable back button
         onBackPressed: () => Navigator.pop(context),  // Navigate back
         onNotificationTap: () {

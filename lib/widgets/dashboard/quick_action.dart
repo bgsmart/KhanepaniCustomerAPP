@@ -24,8 +24,8 @@ class QuickAction extends StatelessWidget {
       child: Column(
         children: [
           Container(
-            width: 60,
-            height: 60,
+            width: 100,
+            height: 100,
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerLowest,
               borderRadius: BorderRadius.circular(12),
@@ -39,14 +39,14 @@ class QuickAction extends StatelessWidget {
             child: Icon(
               icon,
               color: colorScheme.primary,
-              size: 30,
+              size: 50,
             ),
           ),
           const SizedBox(height: 3),
           Text(
             label,
             style: textTheme.labelLarge?.copyWith(
-              fontSize: 9,
+              fontSize: 12,
               color: colorScheme.onSurfaceVariant,
             ),
             textAlign: TextAlign.center,

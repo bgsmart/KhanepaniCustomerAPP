@@ -245,6 +245,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         cusID: customerDetails?.cusID ?? 'N/A',
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
+        advance: customerDetails?.advance.toString()??"0",
+
         showBackButton: true,
         onBackPressed: () => Navigator.pop(context),
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
