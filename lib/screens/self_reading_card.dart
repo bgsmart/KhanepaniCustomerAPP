@@ -155,7 +155,7 @@ class SelfReadingCard extends StatelessWidget {
                 ElevatedButton(
                   onPressed: onSelfReadingTap,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: colorScheme.onErrorContainer,
+                    backgroundColor: colorScheme.primary,
                     foregroundColor: colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),

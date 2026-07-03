@@ -54,11 +54,22 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
   ];
 
+  // Controller for manual date input
+  final TextEditingController _fromDateController = TextEditingController();
+  final TextEditingController _toDateController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
     _setDefaultDates();
     _fetchStatement();
+  }
+
+  @override
+  void dispose() {
+    _fromDateController.dispose();
+    _toDateController.dispose();
+    super.dispose();
   }
 
   void _setDefaultDates() {
@@ -67,6 +78,9 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     
     final sixMonthsAgo = now.subtract(const Duration(days: 180));
     _fromDateBS = '${sixMonthsAgo.year}/${sixMonthsAgo.month.toString().padLeft(2, '0')}/${sixMonthsAgo.day.toString().padLeft(2, '0')}';
+    
+    _fromDateController.text = _fromDateBS;
+    _toDateController.text = _toDateBS;
   }
 
   Future<void> _fetchStatement() async {
@@ -183,7 +197,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
       if (parts.length == 3) {
         final year = parts[0];
         final month = int.parse(parts[1]);
-        // Use English month name
         final monthName = _englishMonths[month - 1];
         final key = '$year $monthName';
         
@@ -246,7 +259,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
         advance: customerDetails?.advance.toString()??"0",
-
         showBackButton: true,
         onBackPressed: () => Navigator.pop(context),
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
@@ -255,31 +267,32 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // Summary Card with 2 items per row
+            // ✅ Compact Summary Card with Gradient Background
             Container(
-              margin: const EdgeInsets.all(16),
-              padding: const EdgeInsets.all(20),
+              margin: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
                     colorScheme.primary,
-                    colorScheme.primaryContainer,
+                    colorScheme.secondary,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.3),
-                    blurRadius: 15,
-                    offset: const Offset(0, 4),
+                    color: colorScheme.primary.withValues(alpha: 0.2),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                 ],
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  // Row: Title, Date Filters, Apply Button, Download Button
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -287,56 +300,46 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                         'SUMMARY',
                         style: textTheme.labelLarge?.copyWith(
                           color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 11,
+                          fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      Row(
-                        children: [
-                          IconButton(
-                            icon: const Icon(Icons.calendar_today, color: Colors.white, size: 20),
-                            onPressed: () => _showDateFilterDialog(),
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(alpha: 0.2),
-                              padding: const EdgeInsets.all(8),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          IconButton(
+                      IconButton(
                             icon: _isDownloading 
                                 ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
+                                    width: 30,
+                                    height: 30,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Icon(Icons.download, color: Colors.white),
+                                : const Icon(Icons.download, color: Colors.white, size: 20),
                             onPressed: _isDownloading ? null : _downloadPDF,
                             style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(alpha: 0.2),
-                              padding: const EdgeInsets.all(8),
+                              backgroundColor: Colors.white.withValues(alpha: 0.15),
+                              padding: const EdgeInsets.all(4),
+                              minimumSize: const Size(35, 35),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
-                        ],
-                      ),
+                        
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
                   
                   // Row 1: Total Bill and Total Payment
                   Row(
                     children: [
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Total Bill',
                         'Rs. ${_totalBillAmount.toStringAsFixed(2)}',
                         Icons.receipt_long,
                         Colors.white,
                       ),
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Total Payment',
                         'Rs. ${_totalPayment.toStringAsFixed(2)}',
@@ -345,19 +348,19 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   
                   // Row 2: Total Penalty and Total Discount
                   Row(
                     children: [
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Total Penalty',
                         'Rs. ${_totalPenalty.toStringAsFixed(2)}',
                         Icons.warning_amber,
                         Colors.white,
                       ),
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Total Discount',
                         'Rs. ${_totalDiscount.abs().toStringAsFixed(2)}',
@@ -366,19 +369,19 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 4),
                   
                   // Row 3: Total Advance and Due Amount
                   Row(
                     children: [
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Total Advance',
                         'Rs. ${_totalAdvance.toStringAsFixed(2)}',
                         Icons.account_balance,
                         Colors.white,
                       ),
-                      _buildSummaryItem(
+                      _buildSummaryItemCompact(
                         context,
                         'Due Amount',
                         'Rs. ${_dueAmount.toStringAsFixed(2)}',
@@ -387,60 +390,172 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
-                  
-                  // Date Range Display
-                  InkWell(
-                    onTap: () => _showDateFilterDialog(),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          width: 1,
-                        ),
-                      ),
-                      child: Row(
+                  const SizedBox(height: 20),
+                  Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(
-                            Icons.date_range,
-                            size: 14,
-                            color: Colors.white.withValues(alpha: 0.8),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            'From: ${_formatBSDateForDisplay(_fromDateBS)}',
-                            style: textTheme.labelLarge?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                          // From Date
+                          SizedBox(
+                            width: 120,
+                            height: 30,
+                            child: TextFormField(
+                              controller: _fromDateController,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'From',
+                                hintStyle: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.15),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                suffixIcon: IconButton(
+                                  icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
+                                  onPressed: () => _pickDate(context, true),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ),
+                              onChanged: (value) {
+                                _fromDateBS = value;
+                              },
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(
-                            Icons.arrow_forward,
-                            size: 12,
-                            color: Colors.white.withValues(alpha: 0.6),
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            'To: ${_formatBSDateForDisplay(_toDateBS)}',
-                            style: textTheme.labelLarge?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.85),
-                              fontSize: 10,
-                              fontWeight: FontWeight.w500,
+                          // To Date
+                          SizedBox(
+                            width: 120,
+                            height: 26,
+                            child: TextFormField(
+                              controller: _toDateController,
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.white,
+                                fontWeight: FontWeight.w700,
+                              ),
+                              decoration: InputDecoration(
+                                hintText: 'To',
+                                hintStyle: TextStyle(
+                                  fontSize: 8,
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.15),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                  borderSide: BorderSide.none,
+                                ),
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+                                suffixIcon: IconButton(
+                                  icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
+                                  onPressed: () => _pickDate(context, false),
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
+                                ),
+                              ),
+                              onChanged: (value) {
+                                _toDateBS = value;
+                              },
                             ),
                           ),
                           const SizedBox(width: 4),
-                          Icon(
-                            Icons.edit,
-                            size: 12,
-                            color: Colors.white.withValues(alpha: 0.6),
+                          // Apply Button
+                          Container(
+                            height: 26,
+                            width: 50,
+                            child: ElevatedButton(
+                              onPressed: () {
+                                _fromDateBS = _fromDateController.text.trim();
+                                _toDateBS = _toDateController.text.trim();
+                                _fetchStatement();
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: colorScheme.primary,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                padding: const EdgeInsets.symmetric(horizontal: 6),
+                                minimumSize: const Size(0, 26),
+                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              ),
+                              child: Text(
+                                'Apply',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
                           ),
-                        ],
+                          const SizedBox(width: 4),
+                          // Download Button
+                          ],
+                      ),
+                  const SizedBox(height: 10),
+                ],
+              ),
+            ),
+
+            // Filter Tabs with Download button in same row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Filter Tabs
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: ['All', 'Bills', 'Payments', 'Due'].map((filter) {
+                          final isSelected = _selectedFilter == filter;
+                          final filterColor = _filterColors[filter] ?? colorScheme.primary;
+                          
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: FilterChip(
+                              label: Text(filter),
+                              selected: isSelected,
+                              onSelected: (_) => setState(() => _selectedFilter = filter),
+                              backgroundColor: colorScheme.surfaceContainerHighest,
+                              selectedColor: filterColor.withValues(alpha: 0.2),
+                              checkmarkColor: filterColor,
+                              labelStyle: textTheme.labelLarge?.copyWith(
+                                color: isSelected ? filterColor : colorScheme.onSurfaceVariant,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                fontSize: 11,
+                              ),
+                              avatar: isSelected
+                                  ? Icon(
+                                      filter == 'Payments' ? Icons.payments : 
+                                      filter == 'Bills' ? Icons.receipt_long : 
+                                      filter == 'Due' ? Icons.warning : 
+                                      Icons.filter_list,
+                                      size: 14,
+                                      color: filterColor,
+                                    )
+                                  : null,
+                              side: BorderSide(
+                                color: isSelected ? filterColor : colorScheme.outlineVariant,
+                                width: isSelected ? 2 : 1,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                            ),
+                          );
+                        }).toList(),
                       ),
                     ),
                   ),
@@ -448,52 +563,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               ),
             ),
 
-            // Filter Tabs
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: ['All', 'Bills', 'Payments', 'Due'].map((filter) {
-                  final isSelected = _selectedFilter == filter;
-                  final filterColor = _filterColors[filter] ?? colorScheme.primary;
-                  
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: FilterChip(
-                      label: Text(filter),
-                      selected: isSelected,
-                      onSelected: (_) => setState(() => _selectedFilter = filter),
-                      backgroundColor: colorScheme.surfaceContainerHighest,
-                      selectedColor: filterColor.withValues(alpha: 0.2),
-                      checkmarkColor: filterColor,
-                      labelStyle: textTheme.labelLarge?.copyWith(
-                        color: isSelected ? filterColor : colorScheme.onSurfaceVariant,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                      ),
-                      avatar: isSelected
-                          ? Icon(
-                              filter == 'Payments' ? Icons.payments : 
-                              filter == 'Bills' ? Icons.receipt_long : 
-                              filter == 'Due' ? Icons.warning : 
-                              Icons.filter_list,
-                              size: 16,
-                              color: filterColor,
-                            )
-                          : null,
-                      side: BorderSide(
-                        color: isSelected ? filterColor : colorScheme.outlineVariant,
-                        width: isSelected ? 2 : 1,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
-
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
             // Grouped Transaction List
             Expanded(
@@ -552,9 +622,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                                 return Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    // Month Header
                                     Padding(
-                                      padding: const EdgeInsets.symmetric(vertical: 12),
+                                      padding: const EdgeInsets.symmetric(vertical: 8),
                                       child: Row(
                                         children: [
                                           Text(
@@ -562,20 +631,21 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                                             style: textTheme.displaySmall?.copyWith(
                                               fontWeight: FontWeight.w700,
                                               color: colorScheme.primary,
+                                              fontSize: 14,
                                             ),
                                           ),
                                           Expanded(
                                             child: Container(
                                               height: 1,
                                               color: colorScheme.outlineVariant,
-                                              margin: const EdgeInsets.only(left: 16),
+                                              margin: const EdgeInsets.only(left: 12),
                                             ),
                                           ),
                                         ],
                                       ),
                                     ),
                                     ...items.map((item) => _buildNewStyleCard(context, item)),
-                                    const SizedBox(height: 8),
+                                    const SizedBox(height: 6),
                                   ],
                                 );
                               },
@@ -613,7 +683,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     
-    // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -640,56 +709,78 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     }
   }
 
-  Widget _buildSummaryItem(BuildContext context, String label, String value, IconData icon, Color textColor) {
+  // Pick date from calendar
+  Future<void> _pickDate(BuildContext context, bool isFromDate) async {
+    final currentDate = isFromDate ? _fromDateBS : _toDateBS;
+    final selectedDate = await showDialog<NepaliDateTime>(
+      context: context,
+      builder: (context) => NepaliDatePickerDialog(
+        initialDate: _parseBSDate(currentDate),
+        firstDate: NepaliDateTime(2075, 1, 1),
+        lastDate: NepaliDateTime(2090, 12, 30),
+        onDateSelected: (date) {
+          final dateStr = '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
+          if (isFromDate) {
+            _fromDateController.text = dateStr;
+            _fromDateBS = dateStr;
+          } else {
+            _toDateController.text = dateStr;
+            _toDateBS = dateStr;
+          }
+        },
+      ),
+    );
+  }
+
+  // ✅ Compact Summary Item Builder
+  Widget _buildSummaryItemCompact(BuildContext context, String label, String value, IconData icon, Color textColor) {
     final textTheme = Theme.of(context).textTheme;
 
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: textColor.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(6),
-              ),
-              child: Icon(
-                icon,
-                size: 14,
-                color: textColor.withValues(alpha: 0.9),
-              ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: textColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
             ),
-            const SizedBox(width: 6),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: textTheme.labelLarge?.copyWith(
-                      color: textColor.withValues(alpha: 0.7),
-                      fontSize: 8,
-                      fontWeight: FontWeight.w500,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  Text(
-                    value,
-                    style: textTheme.displaySmall?.copyWith(
-                      color: textColor,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w700,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+            child: Icon(
+              icon,
+              size: 12,
+              color: textColor.withValues(alpha: 0.9),
             ),
-          ],
-        ),
+          ),
+          const SizedBox(width: 4),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: textTheme.labelLarge?.copyWith(
+                    color: textColor.withValues(alpha: 0.7),
+                    fontSize: 7,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: textTheme.displaySmall?.copyWith(
+                    color: textColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -756,10 +847,10 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: getBgColor(),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(
           color: getTextColor().withValues(alpha: 0.2),
           width: 0.5,
@@ -770,14 +861,14 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         children: [
           Icon(
             getIcon(),
-            size: 12,
+            size: 10,
             color: getTextColor(),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 3),
           Text(
             text,
             style: textTheme.labelLarge?.copyWith(
-              fontSize: 9,
+              fontSize: 8,
               color: getTextColor(),
               fontWeight: FontWeight.w500,
             ),
@@ -792,8 +883,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     final textTheme = Theme.of(context).textTheme;
     final isPayment = item.isPayment;
     final isDue = _isBillDue(item);
-
-    // If units is 0, bill amount should be 0
     final displayBillAmt = (item.units == 0) ? 0.0 : (item.billAmt ?? 0.0);
 
     String getTitle() {
@@ -805,7 +894,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     }
 
     String getSubtitle() {
-      // Description: Date and Bill/Receipt No
       String description = _formatBSDateForDisplay(item.date);
       if (item.billNo > 0) {
         description += ' | Bill No: ${item.billNo}';
@@ -878,13 +966,12 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           width: isDue ? 2 : 1,
         ),
       ),
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 8),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(14),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Top Row: Icon, Title, Amount
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -892,19 +979,19 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   child: Row(
                     children: [
                       Container(
-                        width: 40,
-                        height: 40,
+                        width: 36,
+                        height: 36,
                         decoration: BoxDecoration(
                           color: getIconBgColor(),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
                         child: Icon(
                           getIcon(),
                           color: getIconColor(),
-                          size: 22,
+                          size: 18,
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -913,12 +1000,11 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                               getTitle(),
                               style: textTheme.bodyMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                fontSize: 13,
+                                fontSize: 12,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
                             const SizedBox(height: 2),
-                            // Description: Date and Bill/Receipt No
                             Row(
                               children: [
                                 Flexible(
@@ -926,41 +1012,41 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                                     getSubtitle(),
                                     style: textTheme.bodySmall?.copyWith(
                                       color: isDue ? colorScheme.error : colorScheme.onSurfaceVariant,
-                                      fontSize: 11,
+                                      fontSize: 10,
                                     ),
                                   ),
                                 ),
                                 if (isDue) ...[
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
                                       color: colorScheme.error,
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(3),
                                     ),
                                     child: Text(
                                       'DUE',
                                       style: textTheme.labelLarge?.copyWith(
                                         color: Colors.white,
-                                        fontSize: 8,
+                                        fontSize: 7,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
                                   ),
                                 ],
                                 if (isPayment) ...[
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                                     decoration: BoxDecoration(
                                       color: colorScheme.secondary,
-                                      borderRadius: BorderRadius.circular(4),
+                                      borderRadius: BorderRadius.circular(3),
                                     ),
                                     child: Text(
                                       'PAID',
                                       style: textTheme.labelLarge?.copyWith(
                                         color: Colors.white,
-                                        fontSize: 8,
+                                        fontSize: 7,
                                         fontWeight: FontWeight.w700,
                                       ),
                                     ),
@@ -974,7 +1060,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     ],
                   ),
                 ),
-                // Amount
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
@@ -982,7 +1067,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       getAmount(),
                       style: textTheme.displaySmall?.copyWith(
                         color: getAmountColor(),
-                        fontSize: 18,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -991,7 +1076,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                         'Unpaid',
                         style: textTheme.bodySmall?.copyWith(
                           color: colorScheme.error,
-                          fontSize: 10,
+                          fontSize: 9,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1000,18 +1085,17 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               ],
             ),
             
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
             const Divider(height: 1, color: Colors.grey),
-            const SizedBox(height: 10),
+            const SizedBox(height: 8),
 
-            // Bottom: Details with chips
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Expanded(
                   child: Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
+                    spacing: 6,
+                    runSpacing: 4,
                     children: [
                       if (item.billNo > 0)
                         _buildChip(context, 'Bill No: ${item.billNo}', 'billNo'),
@@ -1028,9 +1112,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     ],
                   ),
                 ),
-                // Status Badge
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: isPayment
                         ? colorScheme.secondaryContainer.withValues(alpha: 0.3)
@@ -1047,7 +1130,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                           : isDue
                               ? colorScheme.error
                               : colorScheme.onPrimaryContainer,
-                      fontSize: 11,
+                      fontSize: 9,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1060,7 +1143,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     );
   }
 
-  // PDF Download - Open directly without sharing
+  // PDF Download
   Future<void> _downloadPDF() async {
     if (_statementResponse == null || _statementResponse!.data.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1077,13 +1160,11 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     });
 
     try {
-      // Try to load Nepali font if available
       pw.Font? font;
       try {
         final fontData = await rootBundle.load('assets/fonts/mangal.ttf');
         font = pw.Font.ttf(fontData.buffer.asByteData());
       } catch (e) {
-        // Font not available, use default
         font = null;
       }
 
@@ -1189,7 +1270,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
             
             pw.SizedBox(height: 8),
             
-            // Summary Section - 2 items per row
+            // Summary Section
             pw.Container(
               padding: const pw.EdgeInsets.all(8),
               decoration: pw.BoxDecoration(
@@ -1198,7 +1279,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               ),
               child: pw.Column(
                 children: [
-                  // Row 1: Total Bill and Total Payment
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
@@ -1223,7 +1303,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     ],
                   ),
                   pw.SizedBox(height: 6),
-                  // Row 2: Total Penalty and Total Discount
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
@@ -1248,7 +1327,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     ],
                   ),
                   pw.SizedBox(height: 6),
-                  // Row 3: Total Advance and Due Amount
                   pw.Row(
                     mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                     children: [
@@ -1334,7 +1412,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   final isDueItem = _isBillDue(item);
                   final displayBillAmt = (item.units == 0) ? 0.0 : (item.billAmt ?? 0.0);
                   
-                  // Build description: Date and Bill/Receipt No
                   String description = _formatBSDateForDisplay(item.date);
                   if (item.billNo > 0) {
                     description += '\nBill: ${item.billNo}';
@@ -1424,7 +1501,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         _isDownloading = false;
       });
 
-      // Open PDF directly instead of sharing
       final result = await OpenFile.open(filePath);
       
       if (result.type == ResultType.done) {
@@ -1458,211 +1534,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         ),
       );
     }
-  }
-
-  void _showDateFilterDialog() {
-    String tempFromDate = _fromDateBS;
-    String tempToDate = _toDateBS;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => DraggableScrollableSheet(
-        initialChildSize: 0.7,
-        minChildSize: 0.4,
-        maxChildSize: 0.9,
-        expand: false,
-        builder: (context, scrollController) {
-          return StatefulBuilder(
-            builder: (context, setStateDialog) {
-              return Column(
-                children: [
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.symmetric(vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const Text(
-                    'Select Date Range (Nepali BS)',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Expanded(
-                    child: ListView(
-                      controller: scrollController,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      children: [
-                        const Text(
-                          'From Date (Nepali BS)',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          onTap: () async {
-                            final selectedDate = await showDialog<NepaliDateTime>(
-                              context: context,
-                              builder: (context) => NepaliDatePickerDialog(
-                                initialDate: _parseBSDate(tempFromDate),
-                                firstDate: NepaliDateTime(2075, 1, 1),
-                                lastDate: NepaliDateTime(2090, 12, 30),
-                                onDateSelected: (date) {
-                                  final dateStr = '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
-                                  setStateDialog(() {
-                                    tempFromDate = dateStr;
-                                  });
-                                },
-                              ),
-                            );
-                            // Use the selected date
-                            if (selectedDate != null) {
-                              // Date is already set in the callback above
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outlineVariant,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  tempFromDate.isNotEmpty 
-                                      ? _formatBSDateForDisplay(tempFromDate)
-                                      : 'Select From Date',
-                                  style: TextStyle(
-                                    color: tempFromDate.isNotEmpty 
-                                        ? Theme.of(context).colorScheme.onSurface
-                                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const Icon(Icons.calendar_today),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'To Date (Nepali BS)',
-                          style: TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          onTap: () async {
-                            final selectedDate = await showDialog<NepaliDateTime>(
-                              context: context,
-                              builder: (context) => NepaliDatePickerDialog(
-                                initialDate: _parseBSDate(tempToDate),
-                                firstDate: NepaliDateTime(2075, 1, 1),
-                                lastDate: NepaliDateTime(2090, 12, 30),
-                                onDateSelected: (date) {
-                                  final dateStr = '${date.year}/${date.month.toString().padLeft(2, '0')}/${date.day.toString().padLeft(2, '0')}';
-                                  setStateDialog(() {
-                                    tempToDate = dateStr;
-                                  });
-                                },
-                              ),
-                            );
-                            // Use the selected date
-                            if (selectedDate != null) {
-                              // Date is already set in the callback above
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              border: Border.all(
-                                color: Theme.of(context).colorScheme.outlineVariant,
-                              ),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  tempToDate.isNotEmpty 
-                                      ? _formatBSDateForDisplay(tempToDate)
-                                      : 'Select To Date',
-                                  style: TextStyle(
-                                    color: tempToDate.isNotEmpty 
-                                        ? Theme.of(context).colorScheme.onSurface
-                                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                                  ),
-                                ),
-                                const Icon(Icons.calendar_today),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () {
-                                  final now = NepaliDateTime.now();
-                                  final sixMonthsAgo = now.subtract(const Duration(days: 180));
-                                  final defaultFrom = '${sixMonthsAgo.year}/${sixMonthsAgo.month.toString().padLeft(2, '0')}/${sixMonthsAgo.day.toString().padLeft(2, '0')}';
-                                  final defaultTo = '${now.year}/${now.month.toString().padLeft(2, '0')}/${now.day.toString().padLeft(2, '0')}';
-                                  
-                                  setStateDialog(() {
-                                    tempFromDate = defaultFrom;
-                                    tempToDate = defaultTo;
-                                  });
-                                },
-                                child: const Text('Reset'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => Navigator.pop(context),
-                                child: const Text('Cancel'),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: () {
-                                  setState(() {
-                                    _fromDateBS = tempFromDate;
-                                    _toDateBS = tempToDate;
-                                  });
-                                  Navigator.pop(context);
-                                  _fetchStatement();
-                                },
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Theme.of(context).colorScheme.primary,
-                                  foregroundColor: Colors.white,
-                                ),
-                                child: const Text('Apply'),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
-      ),
-    );
   }
 
   NepaliDateTime _parseBSDate(String dateStr) {
