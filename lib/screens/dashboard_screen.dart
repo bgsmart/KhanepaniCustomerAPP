@@ -111,7 +111,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       end: Alignment.bottomRight,
                       colors: [
                         colorScheme.primary,
-                        colorScheme.primaryContainer,
+                        const Color.fromARGB(255, 2, 54, 166),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(12),
