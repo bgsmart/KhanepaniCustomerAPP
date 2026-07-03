@@ -88,6 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
         advance: customerDetails?.advance.toString() ?? "0",
+        showCustomerInfo: false, // ✅ Hide customer info in AppBar
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
       ),
@@ -99,6 +100,109 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // ✅ Customer Information Card (Like Summary)
+              if (customerDetails != null)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        colorScheme.primary,
+                        colorScheme.primaryContainer,
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: colorScheme.primary.withValues(alpha: 0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 3),
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        'CUSTOMER INFORMATION',
+                        style: textTheme.labelLarge?.copyWith(
+                          color: Colors.white.withValues(alpha: 0.9),
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Row 1: Customer Name and ID
+                      Row(
+                        children: [
+                          _buildCustomerInfoItem(
+                            context,
+                            'Name:',
+                            customerDetails.name ?? 'N/A',
+                            Icons.person,
+                            Colors.white,
+                          ),
+                          _buildCustomerInfoItem(
+                            context,
+                            'Customer ID:',
+                            customerDetails.cusID ?? 'N/A',
+                            Icons.badge,
+                            Colors.white,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Row 2: Phone and Meter No
+                      Row(
+                        children: [
+                          _buildCustomerInfoItem(
+                            context,
+                            'Phone:',
+                            customerDetails.phone ?? 'N/A',
+                            Icons.phone,
+                            Colors.white,
+                          ),
+                          _buildCustomerInfoItem(
+                            context,
+                            'Meter No:',
+                            customerDetails.meterNo ?? customerDetails.cusID ?? 'N/A',
+                            Icons.speed,
+                            Colors.white,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      // Row 3: Ward and Area
+                      Row(
+                        children: [
+                          _buildCustomerInfoItem(
+                            context,
+                            'Ward:',
+                            customerDetails.wardNo?.toString() ?? 'N/A',
+                            Icons.location_city,
+                            Colors.white,
+                          ),
+                          _buildCustomerInfoItem(
+                            context,
+                            'Area:',
+                            customerDetails.area ?? 'N/A',
+                            Icons.map,
+                            Colors.white,
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
               // Stats Row
               Row(
                 children: [
@@ -372,6 +476,52 @@ class _DashboardScreenState extends State<DashboardScreen> {
               break;
           }
         },
+      ),
+    );
+  }
+
+  // ✅ Customer Info Item Builder
+  Widget _buildCustomerInfoItem(BuildContext context, String label, String value, IconData icon, Color textColor) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Expanded(
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: textColor.withValues(alpha: 0.7),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  label,
+                  style: textTheme.labelLarge?.copyWith(
+                    color: textColor.withValues(alpha: 0.6),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Text(
+                  value,
+                  style: textTheme.displaySmall?.copyWith(
+                    color: textColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

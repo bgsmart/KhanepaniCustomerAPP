@@ -9,8 +9,9 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String cusID;
   final String phone;
   final String? meterNo;
-  final String? advance;
+  final String advance;
   final bool showBackButton;
+  final bool showCustomerInfo;
   final VoidCallback? onBackPressed;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onLogoutTap;
@@ -26,6 +27,7 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
     required this.advance,
     this.meterNo,
     this.showBackButton = false,
+    this.showCustomerInfo = true,
     this.onBackPressed,
     this.onNotificationTap,
     this.onLogoutTap,
@@ -120,11 +122,11 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    // Name
+                    // Company Name
                     Text(
-                      name,
+                      'हेटौडा खानेपानी ब्यवस्थापन बोर्ड',
                       style: const TextStyle(
-                        fontSize: 16,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                         color: Colors.white,
                       ),
@@ -133,27 +135,27 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                     ),
                     const SizedBox(height: 2),
                     
-                    // ID and Phone in one row
+                    // Address and Phone
                     Row(
                       children: [
-                        const Icon(Icons.badge, size: 12, color: Colors.white70),
+                        const Icon(Icons.location_on, size: 12, color: Colors.white70),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            'ID: $cusID',
+                            'हेटौडा २, मकवानपुर',
                             style: const TextStyle(
-                              fontSize: 11,
+                              fontSize: 10,
                               color: Colors.white70,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        const SizedBox(width: 8),
                         const Icon(Icons.phone, size: 12, color: Colors.white70),
                         const SizedBox(width: 4),
                         Expanded(
                           child: Text(
-                            phone,
+                            '9855072264',
                             style: const TextStyle(
                               fontSize: 10,
                               color: Colors.white60,
@@ -164,16 +166,29 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ],
                     ),
                     
-                    // Meter No, Palika and Ward in one row
-                    Row(
-                      children: [
-                        // Meter No - Only show if not null or empty
-                        if (meterNo != null && meterNo!.isNotEmpty && meterNo != 'N/A') ...[
-                          const Icon(Icons.speed, size: 12, color: Colors.white70),
+                    // Customer Info (only if enabled)
+                    if (showCustomerInfo) ...[
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          const Icon(Icons.person, size: 14, color: Colors.white70),
                           const SizedBox(width: 4),
                           Expanded(
                             child: Text(
-                              'Meter: $meterNo',
+                              name,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.white60,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Icon(Icons.badge, size: 12, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              'ID: $cusID',
                               style: const TextStyle(
                                 fontSize: 10,
                                 color: Colors.white60,
@@ -181,30 +196,14 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
-                          const SizedBox(width: 8),
                         ],
-                        // Palika and Ward
-                        const Icon(Icons.location_city, size: 12, color: Colors.white70),
-                        const SizedBox(width: 4),
-                        Expanded(
-                          child: Text(
-                            palika.isNotEmpty && palika != 'N/A' 
-                                ? '$palika, Ward $wardNo' 
-                                : 'Ward $wardNo',
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: Colors.white60,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ],
                 ),
               ),
               
-              // Action Buttons - Notification and Logout (same style)
+              // Action Buttons - Notification and Logout
               Row(
                 children: [
                   // Notification Button
@@ -221,7 +220,7 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                   ),
                   const SizedBox(width: 8),
                   
-                  // ✅ Logout Button - Same style as Notification
+                  // Logout Button
                   IconButton(
                     icon: const Icon(Icons.logout, color: Colors.white),
                     onPressed: onLogoutTap,
@@ -243,5 +242,5 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
   }
 
   @override
-  Size get preferredSize => const Size.fromHeight(90);
+  Size get preferredSize => const Size.fromHeight(80);
 }
