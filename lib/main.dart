@@ -1,4 +1,5 @@
 // lib/main.dart
+import 'package:KhanepaniApp/screens/forgot_password_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
@@ -39,6 +40,7 @@ class AquaFlowApp extends StatelessWidget {
         routes: {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
+          '/forgot-password': (context) => const ForgotPasswordScreen(),
           '/dashboard': (context) => const DashboardScreen(),
           '/notices': (context) => const NoticesScreen(),
           // '/staff': (context) => const StaffScreen(),
