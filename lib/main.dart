@@ -1,6 +1,5 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/login_screen.dart';
@@ -40,12 +39,11 @@ class AquaFlowApp extends StatelessWidget {
         routes: {
           '/': (context) => const SplashScreen(),
           '/login': (context) => const LoginScreen(),
-          // '/home': (context) => const HomeScreen(),
           '/dashboard': (context) => const DashboardScreen(),
           '/notices': (context) => const NoticesScreen(),
           // '/staff': (context) => const StaffScreen(),
           '/about': (context) => const AboutScreen(),
-          // '/self-reading': (context) => const SelfReadingScreen(),
+          '/self-reading': (context) => const SelfReadingScreen(),
           '/consumption-history': (context) => const ConsumptionHistoryScreen(),
           '/account-statement': (context) => const AccountStatementScreen(),
         },

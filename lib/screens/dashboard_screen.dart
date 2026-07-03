@@ -71,6 +71,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     String avgConsumption = '${customerDetails?.avgConsumption?.toStringAsFixed(0) ?? '0'} units';
     String readingBill = 'Rs. ${customerDetails?.readingBill?.toStringAsFixed(0) ?? '0'}';
     String advance = 'Rs. ${customerDetails?.advance?.toStringAsFixed(0) ?? '0'}';
+    
 
     // Determine status
     String statusText = 'Active';
@@ -86,10 +87,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
         cusID: user?.customerId?.toString() ?? 'N/A',
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
-        advance:customerDetails?.advance.toString()??"0",
+        advance: customerDetails?.advance.toString() ?? "0",
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
-        onSettingsTap: () => Navigator.pushNamed(context, '/settings'),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -115,7 +115,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: StatCard(
                       icon: Icons.account_balance_wallet,
                       label: 'Advance',
-                      value: readingBill,
+                      value: advance,
                       color: colorScheme.secondary,
                     ),
                   ),

@@ -1,5 +1,4 @@
 // lib/widgets/dashboard/self_reading_card.dart
-import 'package:KhanepaniApp/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:nepali_utils/nepali_utils.dart';
 
@@ -32,7 +31,7 @@ class SelfReadingCard extends StatelessWidget {
         final diffDays = nextDate.difference(now).inDays;
 
         final nepaliMonths = [
-          'बैशाख', 'जेठ', 'असार', 'श्रावण',
+          'बैशाख', 'जेठ', 'असार', 'साउन',
           'भदौ', 'असोज', 'कात्तिक', 'मंसिर',
           'पुष', 'माघ', 'फागुन', 'चैत'
         ];
@@ -112,44 +111,37 @@ class SelfReadingCard extends StatelessWidget {
     }
   }
 
-  String _getDaysAwayText(int daysAway) {
-    if (daysAway < 0) {
-      return 'Overdue';
-    } else if (daysAway == 0) {
-      return 'Due today!';
-    } else if (daysAway == 1) {
-      return 'Tomorrow';
-    } else {
-      return '$daysAway days away';
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final readingInfo = _parseNextReadingDate();
-    final bool isOverdue = (readingInfo['daysAway'] as int) < 0;
-    final bool isUrgent = (readingInfo['daysAway'] as int) <= 1 && !isOverdue;
 
     return Container(
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 4, 65, 134),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary,
+            colorScheme.primaryContainer,
+          ],
+        ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: colorScheme.tertiary.withValues(alpha: 0.25),
+            color: colorScheme.primary.withValues(alpha: 0.3),
             blurRadius: 20,
             offset: const Offset(0, 8),
           ),
         ],
       ),
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            // Left: Calendar-style date block
+            // Left: Calendar-style date block with white background
             _CalendarDateBlock(
               month: readingInfo['month']?.toString() ?? '',
               day: readingInfo['day'].toString(),
@@ -168,8 +160,7 @@ class SelfReadingCard extends StatelessWidget {
                   Text(
                     'NEXT READING DATE',
                     style: textTheme.labelSmall?.copyWith(
-                      color: colorScheme.onTertiaryFixedVariant
-                          .withValues(alpha: 0.7),
+                      color: Colors.white.withValues(alpha: 0.8),
                       fontWeight: FontWeight.w700,
                       letterSpacing: 1.2,
                     ),
@@ -178,47 +169,33 @@ class SelfReadingCard extends StatelessWidget {
                   Text(
                     '${readingInfo['month']} ${readingInfo['day']}${readingInfo['suffix']}',
                     style: textTheme.titleMedium?.copyWith(
-                      color: colorScheme.onTertiaryFixedVariant,
+                      color: Colors.white,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  const SizedBox(height: 10),
-
-                  // Days-away pill
+                  const SizedBox(height: 8),
                   Container(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 10, vertical: 5),
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
-                      color: isOverdue
-                          ? Colors.red.withValues(alpha: 0.18)
-                          : isUrgent
-                              ? Colors.orange.withValues(alpha: 0.18)
-                              : Colors.white.withValues(alpha: 0.2),
+                      color: Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          isOverdue
-                              ? Icons.error_outline
-                              : Icons.timer_outlined,
-                          size: 13,
-                          color: isOverdue
-                              ? const Color.fromARGB(255, 242, 234, 5)
-                              : isUrgent
-                                  ? Colors.orange.shade800
-                                  : colorScheme.onTertiaryFixedVariant,
+                          Icons.timer_outlined,
+                          size: 14,
+                          color: Colors.white.withValues(alpha: 0.8),
                         ),
                         const SizedBox(width: 4),
                         Text(
-                          _getDaysAwayText(readingInfo['daysAway'] as int),
+                          '${readingInfo['daysAway']} days away',
                           style: textTheme.bodySmall?.copyWith(
-                            color: isOverdue
-                                ? Colors.red.shade700
-                                : isUrgent
-                                    ? Colors.orange.shade800
-                                    : colorScheme.onTertiaryFixedVariant,
+                            color: Colors.white.withValues(alpha: 0.9),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),
@@ -232,25 +209,26 @@ class SelfReadingCard extends StatelessWidget {
 
             const SizedBox(width: 10),
 
-            // Right: Self Reading button, vertically centered
+            // Right: Self Reading button
             ElevatedButton(
               onPressed: onSelfReadingTap,
               style: ElevatedButton.styleFrom(
-                backgroundColor: colorScheme.error,
-                foregroundColor: colorScheme.onPrimary,
+                backgroundColor: Colors.white,
+                foregroundColor: colorScheme.primary,
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(14),
                 ),
                 padding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
                 ),
-                elevation: 0,
+                elevation: 4,
+                shadowColor: Colors.black.withValues(alpha: 0.1),
               ),
               child: const Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.auto_stories_outlined, size: 18),
+                  Icon(Icons.camera_alt, size: 22),
                   SizedBox(height: 4),
                   Text(
                     'Self\nReading',
@@ -290,13 +268,13 @@ class _CalendarDateBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 76,
+      width: 72,
       decoration: BoxDecoration(
-        color: const Color.fromARGB(255, 213, 189, 189),
+        color: Colors.white,
         borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: const Color.fromARGB(255, 234, 232, 232).withValues(alpha: 0.12),
+            color: Colors.black.withValues(alpha: 0.08),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),
@@ -306,18 +284,27 @@ class _CalendarDateBlock extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Top red "month" strip — mimics a paper calendar header
+          // Top color strip
           Container(
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 6),
-            color: colorScheme.error,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  colorScheme.error,
+                  colorScheme.errorContainer,
+                ],
+              ),
+            ),
             child: Text(
               month.toUpperCase(),
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: textTheme.labelSmall?.copyWith(
-                color: colorScheme.onError,
+                color: Colors.white,
                 fontWeight: FontWeight.w800,
                 fontSize: 10,
                 letterSpacing: 0.5,
@@ -325,47 +312,25 @@ class _CalendarDateBlock extends StatelessWidget {
             ),
           ),
 
-          // Two little "binder ring" notches for the calendar look
-          Transform.translate(
-            offset: const Offset(0, -3),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: List.generate(
-                2,
-                (_) => Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: colorScheme.tertiaryFixed,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: Colors.black.withValues(alpha: 0.08),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-
           // Day number
           Padding(
-            padding: const EdgeInsets.only(top: 2, bottom: 10),
+            padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   day,
                   style: textTheme.displaySmall?.copyWith(
-                    color: Colors.black87,
+                    color: colorScheme.onSurface,
                     fontWeight: FontWeight.w800,
-                    fontSize: 24,
+                    fontSize: 26,
                     height: 1,
                   ),
                 ),
                 Text(
                   suffix,
                   style: textTheme.labelSmall?.copyWith(
-                    color: Colors.black45,
+                    color: colorScheme.onSurfaceVariant,
                     fontWeight: FontWeight.w600,
                     fontSize: 10,
                   ),

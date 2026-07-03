@@ -251,7 +251,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         onBackPressed: () => Navigator.pop(context),
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
-        onSettingsTap: () => Navigator.pushNamed(context, '/settings'),
       ),
       body: SafeArea(
         child: Column(

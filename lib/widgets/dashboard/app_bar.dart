@@ -9,12 +9,11 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
   final String cusID;
   final String phone;
   final String? meterNo;
-  final String advance;
+  final String? advance;
   final bool showBackButton;
   final VoidCallback? onBackPressed;
   final VoidCallback? onNotificationTap;
   final VoidCallback? onLogoutTap;
-  final VoidCallback? onSettingsTap;
 
   const DashboardAppBar({
     super.key,
@@ -30,7 +29,6 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
     this.onBackPressed,
     this.onNotificationTap,
     this.onLogoutTap,
-    this.onSettingsTap,
   });
 
   @override
@@ -90,7 +88,6 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                       height: 52,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        // Fallback if image not found
                         return Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -207,9 +204,10 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                 ),
               ),
               
-              // Action Buttons
+              // Action Buttons - Notification and Logout (same style)
               Row(
                 children: [
+                  // Notification Button
                   IconButton(
                     icon: const Icon(Icons.notifications, color: Colors.white),
                     onPressed: onNotificationTap,
@@ -221,42 +219,19 @@ class DashboardAppBar extends StatelessWidget implements PreferredSizeWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 4),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: Colors.white),
-                    color: colorScheme.surface,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 8),
+                  
+                  // ✅ Logout Button - Same style as Notification
+                  IconButton(
+                    icon: const Icon(Icons.logout, color: Colors.white),
+                    onPressed: onLogoutTap,
+                    style: IconButton.styleFrom(
+                      backgroundColor: Colors.white.withValues(alpha: 0.15),
+                      padding: const EdgeInsets.all(8),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    onSelected: (value) {
-                      if (value == 'settings' && onSettingsTap != null) {
-                        onSettingsTap!();
-                      } else if (value == 'logout' && onLogoutTap != null) {
-                        onLogoutTap!();
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'settings',
-                        child: Row(
-                          children: [
-                            Icon(Icons.settings, size: 20),
-                            SizedBox(width: 12),
-                            Text('Settings'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'logout',
-                        child: Row(
-                          children: [
-                            Icon(Icons.logout, size: 20, color: Colors.red),
-                            SizedBox(width: 12),
-                            Text('Logout', style: TextStyle(color: Colors.red)),
-                          ],
-                        ),
-                      ),
-                    ],
                   ),
                 ],
               ),

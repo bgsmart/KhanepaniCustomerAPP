@@ -1,6 +1,7 @@
 // lib/screens/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../providers/auth_provider.dart';
 import '../config/app_config.dart';
 
@@ -17,6 +18,13 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _obscurePassword = true;
   bool _rememberMe = false;
+  bool _isLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
 
   @override
   void dispose() {
@@ -25,41 +33,80 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // lib/screens/login_screen.dart - Update the _login method
-Future<void> _login() async {
-  if (_formKey.currentState!.validate()) {
-    final authProvider = context.read<AuthProvider>();
-    
-    // Clear any previous errors
-    authProvider.clearError();
-    
+  // ✅ Load saved credentials from SharedPreferences
+  Future<void> _loadSavedCredentials() async {
     try {
-      final customerId = int.parse(_customerIdController.text.trim());
-      final password = _passwordController.text.trim();
-      
-      // Attempt login with Customer ID and password
-      final success = await authProvider.loginWithCustomerSimple(
-        customerID: customerId,
-        password: password,
-      );
-      
-      // Check if login was successful and navigate
-      if (mounted && success && authProvider.isAuthenticated) {
-        Navigator.pushReplacementNamed(context, '/dashboard');
+      final prefs = await SharedPreferences.getInstance();
+      final customerId = prefs.getString('saved_customer_id');
+      final password = prefs.getString('saved_password');
+      final rememberMe = prefs.getBool('remember_me') ?? false;
+
+      if (rememberMe && customerId != null && password != null) {
+        setState(() {
+          _rememberMe = true;
+          _customerIdController.text = customerId;
+          _passwordController.text = password;
+        });
       }
     } catch (e) {
-      if (mounted) {
-        // Handle parsing error or other exceptions
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Invalid Customer ID. Please enter a valid number.'),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
+      // Handle error silently
+      debugPrint('Error loading saved credentials: $e');
+    }
+  }
+
+  // ✅ Save credentials to SharedPreferences
+  Future<void> _saveCredentials(String customerId, String password) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (_rememberMe) {
+        await prefs.setString('saved_customer_id', customerId);
+        await prefs.setString('saved_password', password);
+        await prefs.setBool('remember_me', true);
+      } else {
+        // Clear saved credentials if remember me is unchecked
+        await prefs.remove('saved_customer_id');
+        await prefs.remove('saved_password');
+        await prefs.setBool('remember_me', false);
+      }
+    } catch (e) {
+      debugPrint('Error saving credentials: $e');
+    }
+  }
+
+  Future<void> _login() async {
+    if (_formKey.currentState!.validate()) {
+      final authProvider = context.read<AuthProvider>();
+      
+      authProvider.clearError();
+      
+      try {
+        final customerId = int.parse(_customerIdController.text.trim());
+        final password = _passwordController.text.trim();
+        
+        // Attempt login
+        final success = await authProvider.loginWithCustomerSimple(
+          customerID: customerId,
+          password: password,
         );
+        
+        if (mounted && success && authProvider.isAuthenticated) {
+          // ✅ Save credentials if remember me is checked
+          await _saveCredentials(customerId.toString(), password);
+          Navigator.pushReplacementNamed(context, '/dashboard');
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Invalid Customer ID. Please enter a valid number.'),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
       }
     }
   }
-}
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -96,7 +143,6 @@ Future<void> _login() async {
                       height: 100,
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        // Fallback if image not found
                         return Container(
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -120,11 +166,11 @@ Future<void> _login() async {
                 ),
                 const SizedBox(height: 16),
                 
-                // Company Name - Fixed Nepali Unicode
+                // Company Name
                 Text(
                   AppConfig.companyName,
                   style: TextStyle(
-                    fontFamily: 'NotoSansDevanagari', // Add this font
+                    fontFamily: 'NotoSansDevanagari',
                     fontSize: 20,
                     fontWeight: FontWeight.w700,
                     color: colorScheme.primary,
@@ -134,11 +180,11 @@ Future<void> _login() async {
                 ),
                 const SizedBox(height: 4),
                 
-                // Company Address - Fixed Nepali Unicode
+                // Company Address
                 Text(
                   AppConfig.companyAddress,
                   style: TextStyle(
-                    fontFamily: 'NotoSansDevanagari', // Add this font
+                    fontFamily: 'NotoSansDevanagari',
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
                     color: colorScheme.onSurfaceVariant,
@@ -219,7 +265,7 @@ Future<void> _login() async {
                             decoration: InputDecoration(
                               prefixIcon: const Icon(Icons.person_outline),
                               hintText: 'Enter your Customer ID',
-                              counterText: '', // Hide character counter
+                              counterText: '',
                               filled: true,
                               fillColor: colorScheme.surface,
                               border: OutlineInputBorder(
@@ -253,7 +299,6 @@ Future<void> _login() async {
                               ),
                             ),
                             onChanged: (value) {
-                              // Clear error when user types
                               if (authProvider.errorMessage != null) {
                                 authProvider.clearError();
                               }
@@ -350,7 +395,6 @@ Future<void> _login() async {
                               ),
                             ),
                             onChanged: (value) {
-                              // Clear error when user types
                               if (authProvider.errorMessage != null) {
                                 authProvider.clearError();
                               }
@@ -367,7 +411,7 @@ Future<void> _login() async {
                           ),
                           const SizedBox(height: 16),
 
-                          // Remember Me
+                          // ✅ Remember Me with saved state
                           Row(
                             children: [
                               Checkbox(
@@ -377,6 +421,10 @@ Future<void> _login() async {
                                     : (value) {
                                         setState(() {
                                           _rememberMe = value ?? false;
+                                          // If unchecked, clear saved credentials
+                                          if (!_rememberMe) {
+                                            _clearSavedCredentials();
+                                          }
                                         });
                                       },
                                 activeColor: colorScheme.primary,
@@ -425,33 +473,8 @@ Future<void> _login() async {
                                     ),
                             ),
                           ),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: 12),
 
-                          // Register Link
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'New User?',
-                                style: textTheme.bodyMedium,
-                              ),
-                              TextButton(
-                                onPressed: authProvider.isLoading
-                                    ? null
-                                    : () {
-                                        // Navigate to register
-                                        Navigator.pushNamed(context, '/register');
-                                      },
-                                child: Text(
-                                  'Register Now',
-                                  style: textTheme.bodyMedium?.copyWith(
-                                    color: colorScheme.primary,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
                         ],
                       ),
                     ),
@@ -564,11 +587,38 @@ Future<void> _login() async {
                     ),
                   ],
                 ),
+
+                const SizedBox(height: 16),
+
+                // Powered By
+                Center(
+                  child: Text(
+                    'Powered By : Iconsft Technologies',
+                    style: textTheme.bodySmall?.copyWith(
+                      color: colorScheme.onSurfaceVariant.withOpacity(0.6),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w400,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
               ],
             ),
           ),
         ),
       ),
     );
+  }
+
+  // ✅ Clear saved credentials
+  Future<void> _clearSavedCredentials() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('saved_customer_id');
+      await prefs.remove('saved_password');
+      await prefs.setBool('remember_me', false);
+    } catch (e) {
+      debugPrint('Error clearing credentials: $e');
+    }
   }
 }

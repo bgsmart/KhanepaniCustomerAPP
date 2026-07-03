@@ -51,7 +51,6 @@ class _NoticesScreenState extends State<NoticesScreen> {
           );
         },
         onLogoutTap: () => _handleLogout(context),
-        onSettingsTap: () => Navigator.pushNamed(context, '/settings'),
       ),
       body: SafeArea(
         child: Padding(
