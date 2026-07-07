@@ -1,7 +1,7 @@
 // lib/config/app_config.dart
 class AppConfig {
   // API Configuration
-  static const String baseUrl = 'http://103.68.40.118:88';
+  static const String baseUrl = 'https://bishwagtm.com.np/CleanMe';
   static const int tenantId = 2;
   
   // Admin Credentials

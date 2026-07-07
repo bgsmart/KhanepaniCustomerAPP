@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/reading_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
+import '../widgets/dashboard/app_bar.dart';
 import '../widgets/nepali_date_picker_dialog.dart';
 import '../config/app_config.dart';
 import 'dart:io';
@@ -18,12 +19,14 @@ class SelfReadingScreen extends StatefulWidget {
   State<SelfReadingScreen> createState() => _SelfReadingScreenState();
 }
 
-class _SelfReadingScreenState extends State<SelfReadingScreen> {
+class _SelfReadingScreenState extends State<SelfReadingScreen> with WidgetsBindingObserver {
   final List<TextEditingController> _digitControllers = [];
   String _selectedMonth = 'बैशाख';
   String _selectedYear = '';
   XFile? _image;
   NepaliDateTime? _selectedDate;
+  bool _isImageLoading = false;
+  String? _lastReadingNumber;
 
   // Nepali months
   final List<String> _nepaliMonths = [
@@ -41,14 +44,48 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _initializeControllers();
     _initializeYears();
     _selectedDate = NepaliDateTime.now();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    for (var controller in _digitControllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+    }
+  }
+
   void _initializeControllers() {
+    // Get last reading number from customer details
+    final authProvider = context.read<AuthProvider>();
+    final customerDetails = authProvider.customerDetails;
+    _lastReadingNumber = customerDetails?.lastReadingNumber ?? '0';
+    
+    // Parse the last reading number and split into digits
+    String lastReading = _lastReadingNumber ?? '00000';
+    // Pad with leading zeros if needed
+    while (lastReading.length < 5) {
+      lastReading = '0' + lastReading;
+    }
+    
+    // Initialize controllers with the last reading number digits
+    _digitControllers.clear();
     for (int i = 0; i < 5; i++) {
-      _digitControllers.add(TextEditingController(text: i == 2 ? '1' : i == 3 ? '4' : i == 4 ? '5' : '0'));
+      String digit = i < lastReading.length ? lastReading[i] : '0';
+      _digitControllers.add(TextEditingController(text: digit));
     }
   }
 
@@ -64,19 +101,128 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
     ];
   }
 
-  @override
-  void dispose() {
-    for (var controller in _digitControllers) {
-      controller.dispose();
-    }
-    super.dispose();
+  // Show image picker options (Camera or Gallery)
+  Future<void> _showImagePickerOptions() async {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.grey[300],
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildImagePickerOption(
+                  icon: Icons.camera_alt,
+                  label: 'Camera',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.camera);
+                  },
+                ),
+                _buildImagePickerOption(
+                  icon: Icons.photo_library,
+                  label: 'Gallery',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _pickImage(ImageSource.gallery);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+          ],
+        ),
+      ),
+    );
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: ImageSource.camera);
-    if (image != null) {
-      setState(() => _image = image);
+  Widget _buildImagePickerOption({
+    required IconData icon,
+    required String label,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        children: [
+          Container(
+            width: 70,
+            height: 70,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary.withAlpha(20),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Icon(
+              icon,
+              size: 32,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Remove image
+  void _removeImage() {
+    setState(() {
+      _image = null;
+    });
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    setState(() {
+      _isImageLoading = true;
+    });
+
+    try {
+      final picker = ImagePicker();
+      final image = await picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 80,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _image = image;
+          _isImageLoading = false;
+        });
+      } else {
+        setState(() {
+          _isImageLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isImageLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -85,7 +231,7 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
       context: context,
       builder: (context) => NepaliDatePickerDialog(
         initialDate: _selectedDate ?? NepaliDateTime.now(),
-        firstDate: _lastReadingDate.add(Duration(days: 1)),
+        firstDate: _lastReadingDate.add(const Duration(days: 1)),
         lastDate: NepaliDateTime.now(),
         onDateSelected: (date) {
           setState(() {
@@ -99,6 +245,19 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
   Future<void> _submitReading() async {
     final readingProvider = context.read<ReadingProvider>();
     final readingValue = int.parse(_digitControllers.map((c) => c.text).join());
+    final lastReading = int.parse(_lastReadingNumber ?? '0');
+    
+    // Check if reading is less than last reading
+    if (readingValue < lastReading) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Reading cannot be less than the last reading: ${_formatReadingNumber(lastReading.toString())}'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+      return;
+    }
     
     if (_selectedDate == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,6 +292,14 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
     }
   }
 
+  String _formatReadingNumber(String number) {
+    // Format number with commas: e.g., 1420 -> 1,420
+    if (number.isEmpty) return '0';
+    final int num = int.tryParse(number) ?? 0;
+    return NumberFormat('#,###', 'en_US').format(num);
+  }
+
+
   String _formatNepaliDate(NepaliDateTime date) {
     final monthName = AppConfig.getNepaliMonth(date.month);
     return '${date.year} $monthName ${date.day}';
@@ -146,175 +313,41 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
     final authProvider = context.watch<AuthProvider>();
     final customerDetails = authProvider.customerDetails;
 
+    // Update last reading number from customer details
+    if (customerDetails != null && _lastReadingNumber != customerDetails.lastReadingNumber) {
+      _lastReadingNumber = customerDetails.lastReadingNumber;
+      _initializeControllers();
+    }
+
     bool isDateValid = _selectedDate != null && 
         _selectedDate!.isAfter(_lastReadingDate);
 
     // ✅ Get Customer ID and Meter No
     final customerId = customerDetails?.cusID ?? 'N/A';
     final meterNo = customerDetails?.meterNo ?? customerDetails?.cusID ?? 'N/A';
+    final lastReading = _lastReadingNumber ?? '0';
+    final formattedLastReading = _formatReadingNumber(lastReading);
+
+    // Get current reading value for validation
+    final currentReading = int.parse(_digitControllers.map((c) => c.text).join());
+    final isReadingValid = currentReading >= int.parse(lastReading);
 
     return Scaffold(
       backgroundColor: colorScheme.surface,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(85),
-        child: Container(
-          decoration: BoxDecoration(
-            color: colorScheme.primary,
-            boxShadow: [
-              BoxShadow(
-                color: colorScheme.primary.withValues(alpha: 0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  // Back Button
-                  IconButton(
-                    icon: const Icon(
-                      Icons.arrow_back,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => Navigator.pop(context),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  // Avatar
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          Colors.white.withValues(alpha: 0.9),
-                          Colors.white.withValues(alpha: 0.6),
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Center(
-                      child: Text(
-                        customerDetails?.name.isNotEmpty == true 
-                            ? customerDetails!.name[0].toUpperCase() 
-                            : 'U',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w700,
-                          color: colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // User Info
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          customerDetails?.name ?? 'Customer',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.white,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        if (customerDetails != null) ...[
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.badge,
-                                size: 12,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'ID: $customerId',
-                                style: const TextStyle(
-                                  fontSize: 11,
-                                  color: Colors.white70,
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              const Icon(
-                                Icons.phone,
-                                size: 12,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                customerDetails.phone,
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                            ],
-                          ),
-                          // ✅ Meter No - Separate from Customer ID
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.speed,
-                                size: 12,
-                                color: Colors.white70,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Meter No: $meterNo',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white60,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  // Notification Button
-                  IconButton(
-                    icon: const Icon(
-                      Icons.notifications,
-                      color: Colors.white,
-                    ),
-                    onPressed: () => Navigator.pushNamed(context, '/notices'),
-                    style: IconButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.15),
-                      padding: const EdgeInsets.all(8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
+      appBar: DashboardAppBar(
+        name: customerDetails?.name ?? 'User',
+        wardNo: customerDetails?.wardNo ?? 'N/A',
+        area: customerDetails?.area ?? 'N/A',
+        palika: customerDetails?.palika ?? 'N/A',
+        cusID: customerDetails?.cusID?.toString() ?? 'N/A',
+        phone: customerDetails?.phone ?? 'N/A',
+        meterNo: customerDetails?.meterNo ?? 'N/A',
+        advance: customerDetails?.advance?.toString() ?? "0",
+        showBackButton: true,
+        showCustomerInfo: false,
+        onBackPressed: () => Navigator.pop(context),
+        onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
+        onLogoutTap: () => _handleLogout(context),
       ),
       body: SafeArea(
         child: Padding(
@@ -343,7 +376,7 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      color: colorScheme.outlineVariant.withAlpha(76),
                     ),
                   ),
                   child: Padding(
@@ -421,14 +454,14 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
 
                 const SizedBox(height: 16),
 
-                // Period Selector - Nepali Date Picker (Same as Account Statement)
+                // Period Selector - Nepali Date Picker
                 Card(
                   color: colorScheme.surfaceContainerLowest,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      color: colorScheme.outlineVariant.withAlpha(76),
                     ),
                   ),
                   child: Padding(
@@ -548,7 +581,7 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      color: colorScheme.outlineVariant.withAlpha(76),
                     ),
                   ),
                   child: Padding(
@@ -571,13 +604,17 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                                 vertical: 4,
                               ),
                               decoration: BoxDecoration(
-                                color: colorScheme.secondaryContainer.withValues(alpha: 0.3),
+                                color: isReadingValid 
+                                    ? colorScheme.secondaryContainer.withAlpha(76)
+                                    : colorScheme.errorContainer.withAlpha(76),
                                 borderRadius: BorderRadius.circular(50),
                               ),
                               child: Text(
-                                'Last: 1,420 m³',
+                                'Last: $formattedLastReading m³',
                                 style: textTheme.labelLarge?.copyWith(
-                                  color: colorScheme.onSecondaryContainer,
+                                  color: isReadingValid 
+                                      ? colorScheme.onSecondaryContainer
+                                      : colorScheme.error,
                                 ),
                               ),
                             ),
@@ -591,14 +628,16 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                               Padding(
                                 padding: EdgeInsets.only(right: i == 3 ? 8 : 4),
                                 child: SizedBox(
-                                  width: 52,
-                                  height: 68,
+                                  width: 45,
+                                  height: 60,
                                   child: TextFormField(
                                     controller: _digitControllers[i],
                                     textAlign: TextAlign.center,
                                     style: textTheme.displayLarge?.copyWith(
                                       fontSize: 30,
-                                      color: colorScheme.onSurface,
+                                      color: isReadingValid 
+                                          ? colorScheme.onSurface
+                                          : colorScheme.error,
                                       fontWeight: FontWeight.w700,
                                     ),
                                     maxLength: 1,
@@ -610,19 +649,25 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                                       border: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
-                                          color: colorScheme.outlineVariant,
+                                          color: isReadingValid 
+                                              ? colorScheme.outlineVariant
+                                              : colorScheme.error,
                                         ),
                                       ),
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
-                                          color: colorScheme.outlineVariant,
+                                          color: isReadingValid 
+                                              ? colorScheme.outlineVariant
+                                              : colorScheme.error,
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
-                                          color: colorScheme.primary,
+                                          color: isReadingValid 
+                                              ? colorScheme.primary
+                                              : colorScheme.error,
                                           width: 2,
                                         ),
                                       ),
@@ -632,6 +677,8 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                                       if (value.length == 1 && i < 4) {
                                         FocusScope.of(context).nextFocus();
                                       }
+                                      // Update the state to refresh the validation
+                                      setState(() {});
                                     },
                                   ),
                                 ),
@@ -650,15 +697,25 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Icon(
-                              Icons.info_outline,
+                              isReadingValid 
+                                  ? Icons.info_outline
+                                  : Icons.warning,
                               size: 16,
-                              color: colorScheme.onSurfaceVariant,
+                              color: isReadingValid 
+                                  ? colorScheme.onSurfaceVariant
+                                  : colorScheme.error,
                             ),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Enter all black digits shown on your meter (without decimals).',
-                                style: textTheme.bodySmall,
+                                isReadingValid 
+                                    ? 'Enter all black digits shown on your meter (without decimals).'
+                                    : 'Current reading must be greater than or equal to last reading: $formattedLastReading m³',
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: isReadingValid 
+                                      ? colorScheme.onSurfaceVariant
+                                      : colorScheme.error,
+                                ),
                               ),
                             ),
                           ],
@@ -670,14 +727,14 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
 
                 const SizedBox(height: 16),
 
-                // Photo Upload
+                // Photo Upload with Camera and Gallery Options
                 Card(
                   color: colorScheme.surfaceContainerLowest,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                     side: BorderSide(
-                      color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+                      color: colorScheme.outlineVariant.withAlpha(76),
                     ),
                   ),
                   child: Padding(
@@ -685,14 +742,32 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'ATTACH METER PHOTO',
-                          style: textTheme.labelLarge?.copyWith(
-                            color: colorScheme.primary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'ATTACH METER PHOTO',
+                              style: textTheme.labelLarge?.copyWith(
+                                color: colorScheme.primary,
+                              ),
+                            ),
+                            if (_image != null)
+                              IconButton(
+                                icon: Icon(
+                                  Icons.close,
+                                  color: colorScheme.error,
+                                  size: 20,
+                                ),
+                                onPressed: _removeImage,
+                                tooltip: 'Remove photo',
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                          ],
                         ),
                         const SizedBox(height: 12),
                         Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Expanded(
                               child: Column(
@@ -719,51 +794,100 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                               ),
                             ),
                             const SizedBox(width: 12),
-                            InkWell(
-                              onTap: _pickImage,
+                            // Image Preview / Upload Area - Fixed
+                            ClipRRect(
                               borderRadius: BorderRadius.circular(12),
-                              child: Container(
-                                width: 120,
-                                height: 120,
-                                decoration: BoxDecoration(
-                                  color: colorScheme.surface,
-                                  border: Border.all(
-                                    color: colorScheme.outlineVariant,
-                                    style: BorderStyle.solid,
-                                    width: 2,
+                              child: GestureDetector(
+                                onTap: _showImagePickerOptions,
+                                child: Container(
+                                  width: 130,
+                                  height: 130,
+                                  decoration: BoxDecoration(
+                                    color: colorScheme.surface,
+                                    border: Border.all(
+                                      color: _image != null 
+                                          ? colorScheme.primary 
+                                          : colorScheme.outlineVariant,
+                                      style: BorderStyle.solid,
+                                      width: 2,
+                                    ),
+                                    borderRadius: BorderRadius.circular(12),
                                   ),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: _image != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(12),
-                                        child: Image.network(
-                                          _image!.path,
-                                          fit: BoxFit.cover,
-                                        ),
-                                      )
-                                    : Column(
-                                        mainAxisAlignment: MainAxisAlignment.center,
-                                        children: [
-                                          Icon(
-                                            Icons.camera_alt,
-                                            size: 40,
-                                            color: colorScheme.primary,
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            'Capture Photo',
-                                            style: textTheme.displaySmall?.copyWith(
-                                              color: colorScheme.primary,
-                                              fontSize: 14,
+                                  child: _isImageLoading
+                                      ? const Center(
+                                          child: CircularProgressIndicator(),
+                                        )
+                                      : _image != null
+                                          ? Stack(
+                                              fit: StackFit.expand,
+                                              children: [
+                                                ClipRRect(
+                                                  borderRadius: BorderRadius.circular(12),
+                                                  child: Image.file(
+                                                    File(_image!.path),
+                                                    fit: BoxFit.cover,
+                                                  ),
+                                                ),
+                                                Positioned(
+                                                  bottom: 4,
+                                                  right: 4,
+                                                  child: Container(
+                                                    padding: const EdgeInsets.symmetric(
+                                                      horizontal: 8,
+                                                      vertical: 4,
+                                                    ),
+                                                    decoration: BoxDecoration(
+                                                      color: Colors.black.withAlpha(150),
+                                                      borderRadius: BorderRadius.circular(4),
+                                                    ),
+                                                    child: Row(
+                                                      mainAxisSize: MainAxisSize.min,
+                                                      children: [
+                                                        Icon(
+                                                          Icons.camera_alt,
+                                                          size: 12,
+                                                          color: Colors.white,
+                                                        ),
+                                                        const SizedBox(width: 4),
+                                                        Text(
+                                                          'Change',
+                                                          style: const TextStyle(
+                                                            color: Colors.white,
+                                                            fontSize: 10,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            )
+                                          : Column(
+                                              mainAxisAlignment: MainAxisAlignment.center,
+                                              children: [
+                                                Icon(
+                                                  Icons.add_photo_alternate,
+                                                  size: 48,
+                                                  color: colorScheme.primary,
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Text(
+                                                  'Tap to upload',
+                                                  style: textTheme.displaySmall?.copyWith(
+                                                    color: colorScheme.primary,
+                                                    fontSize: 14,
+                                                  ),
+                                                ),
+                                                Text(
+                                                  'Camera or Gallery',
+                                                  style: textTheme.bodySmall?.copyWith(
+                                                    color: colorScheme.onSurfaceVariant,
+                                                    fontSize: 10,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
-                                          ),
-                                          Text(
-                                            'or tap to upload',
-                                            style: textTheme.bodySmall,
-                                          ),
-                                        ],
-                                      ),
+                                ),
                               ),
                             ),
                           ],
@@ -780,15 +904,15 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                   width: double.infinity,
                   height: 56,
                   child: ElevatedButton(
-                    onPressed: readingProvider.isLoading ? null : _submitReading,
+                    onPressed: (readingProvider.isLoading || !isReadingValid) ? null : _submitReading,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: colorScheme.primary,
-                      foregroundColor: colorScheme.onPrimary,
+                      backgroundColor: isReadingValid ? colorScheme.primary : colorScheme.onSurfaceVariant,
+                      foregroundColor: isReadingValid ? colorScheme.onPrimary : Colors.white,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      elevation: 4,
-                      shadowColor: colorScheme.primary.withValues(alpha: 0.3),
+                      elevation: isReadingValid ? 4 : 0,
+                      shadowColor: isReadingValid ? colorScheme.primary.withAlpha(76) : Colors.transparent,
                     ),
                     child: readingProvider.isLoading
                         ? const SizedBox(
@@ -799,14 +923,16 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
                               strokeWidth: 2,
                             ),
                           )
-                        : const Row(
+                        : Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.send),
-                              SizedBox(width: 8),
+                              Icon(
+                                isReadingValid ? Icons.send : Icons.block,
+                              ),
+                              const SizedBox(width: 8),
                               Text(
-                                'Submit Reading',
-                                style: TextStyle(
+                                isReadingValid ? 'Submit Reading' : 'Invalid Reading',
+                                style: const TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.w600,
                                 ),
@@ -836,7 +962,7 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
               Navigator.pushReplacementNamed(context, '/dashboard');
               break;
             case 1:
-              Navigator.pushReplacementNamed(context, '/consumption-history');
+              Navigator.pushReplacementNamed(context, '/reading-history');
               break;
             case 2:
               break;
@@ -850,6 +976,36 @@ class _SelfReadingScreenState extends State<SelfReadingScreen> {
         },
       ),
     );
+  }
+
+  // Handle logout
+  Future<void> _handleLogout(BuildContext context) async {
+    final authProvider = context.read<AuthProvider>();
+    
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Logout'),
+        content: const Text('Are you sure you want to logout?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Logout', style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    
+    if (confirm == true) {
+      await authProvider.logout();
+      if (mounted) {
+        Navigator.pushReplacementNamed(context, '/login');
+      }
+    }
   }
 
   Widget _buildRequirement(BuildContext context, String text) {

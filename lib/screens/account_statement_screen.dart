@@ -1,9 +1,10 @@
 // lib/screens/account_statement_screen.dart
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart' show rootBundle;
+import 'package:flutter/services.dart' show FilteringTextInputFormatter, LengthLimitingTextInputFormatter;
 import 'package:nepali_utils/nepali_utils.dart';
 import 'package:provider/provider.dart';
 import '../models/customer_statement.dart';
+import '../models/company.dart';
 import '../providers/auth_provider.dart';
 import '../services/api_service.dart';
 import '../widgets/bottom_nav_bar.dart';
@@ -22,7 +23,7 @@ class AccountStatementScreen extends StatefulWidget {
   State<AccountStatementScreen> createState() => _AccountStatementScreenState();
 }
 
-class _AccountStatementScreenState extends State<AccountStatementScreen> {
+class _AccountStatementScreenState extends State<AccountStatementScreen> with WidgetsBindingObserver {
   int _currentIndex = 3;
   String _selectedFilter = 'All';
   CustomerStatementResponse? _statementResponse;
@@ -34,11 +35,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   String _fromDateBS = '';
   String _toDateBS = '';
 
-  // Company Details
-  final String companyName = 'हेटौडा खानेपानी ब्यवस्थापन बोर्ड';
-  final String companyAddress = 'हेटौडा २, मकवानपुर';
-  final String companyPhone = '9855072264';
-  final String companyEmail = 'info@hwsboard.gov.np';
+  // Company Details (English version for PDF)
+  final Company _company = Company.defaultCompanyEnglish;
 
   // Filter colors
   final Map<String, Color> _filterColors = {
@@ -54,22 +52,33 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     'Kartik', 'Mangsir', 'Poush', 'Magh', 'Falgun', 'Chaitra'
   ];
 
-  // Controller for manual date input
+  // Controllers for date input with mask
   final TextEditingController _fromDateController = TextEditingController();
   final TextEditingController _toDateController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _setDefaultDates();
     _fetchStatement();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _fromDateController.dispose();
     _toDateController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+    }
   }
 
   void _setDefaultDates() {
@@ -84,6 +93,8 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   }
 
   Future<void> _fetchStatement() async {
+    if (!mounted) return;
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -91,23 +102,35 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
 
     try {
       final authProvider = context.read<AuthProvider>();
-      final customerId = int.parse(authProvider.customerDetails?.cusID ?? '0');
+      final customerId = authProvider.customerDetails?.cusID;
       
-      if (customerId == 0) {
+      int customerIdInt;
+      if (customerId == null) {
         throw Exception('Customer ID not found');
+      } else if (customerId is String) {
+        customerIdInt = int.tryParse(customerId) ?? 0;
+        if (customerIdInt == 0) {
+          throw Exception('Invalid Customer ID format');
+        }
+      } else {
+        throw Exception('Invalid Customer ID type');
       }
 
       final response = await ApiService.getCustomerStatement(
-        customerID: customerId,
+        customerID: customerIdInt,
         fromDate: _fromDateBS,
         toDate: _toDateBS,
       );
+
+      if (!mounted) return;
 
       setState(() {
         _statementResponse = response;
         _isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _errorMessage = e.toString();
         _isLoading = false;
@@ -240,6 +263,24 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     }
   }
 
+  // Show snackbar with auto-dismiss
+  void _showSnackBar(String message, {bool isSuccess = true, Duration duration = const Duration(seconds: 2)}) {
+    if (!mounted) return;
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess ? Colors.green : Colors.red,
+        duration: duration,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -255,11 +296,12 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         wardNo: customerDetails?.wardNo ?? 'N/A',
         area: customerDetails?.area ?? 'N/A',
         palika: customerDetails?.palika ?? 'N/A',
-        cusID: customerDetails?.cusID ?? 'N/A',
+        cusID: customerDetails?.cusID?.toString() ?? 'N/A',
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
-        advance: customerDetails?.advance.toString()??"0",
+        advance: customerDetails?.advance?.toString() ?? "0",
         showBackButton: true,
+        showCustomerInfo: false,
         onBackPressed: () => Navigator.pop(context),
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
@@ -267,7 +309,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
       body: SafeArea(
         child: Column(
           children: [
-            // ✅ Compact Summary Card with Gradient Background
+            // Compact Summary Card with Gradient Background
             Container(
               margin: const EdgeInsets.all(12),
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -283,7 +325,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: colorScheme.primary.withValues(alpha: 0.2),
+                    color: colorScheme.primary.withAlpha(50),
                     blurRadius: 10,
                     offset: const Offset(0, 3),
                   ),
@@ -299,32 +341,31 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                       Text(
                         'SUMMARY',
                         style: textTheme.labelLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
+                          color: Colors.white.withAlpha(230),
                           fontSize: 14,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 0.5,
                         ),
                       ),
                       IconButton(
-                            icon: _isDownloading 
-                                ? const SizedBox(
-                                    width: 30,
-                                    height: 30,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      color: Colors.white,
-                                    ),
-                                  )
-                                : const Icon(Icons.download, color: Colors.white, size: 20),
-                            onPressed: _isDownloading ? null : _downloadPDF,
-                            style: IconButton.styleFrom(
-                              backgroundColor: Colors.white.withValues(alpha: 0.15),
-                              padding: const EdgeInsets.all(4),
-                              minimumSize: const Size(35, 35),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                            ),
-                          ),
-                        
+                        icon: _isDownloading 
+                            ? const SizedBox(
+                                width: 30,
+                                height: 30,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Icon(Icons.download, color: Colors.white, size: 20),
+                        onPressed: _isDownloading ? null : _downloadPDF,
+                        style: IconButton.styleFrom(
+                          backgroundColor: Colors.white.withAlpha(38),
+                          padding: const EdgeInsets.all(4),
+                          minimumSize: const Size(35, 35),
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 8),
@@ -392,127 +433,180 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   ),
                   const SizedBox(height: 20),
                   Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          // From Date
-                          SizedBox(
-                            width: 120,
-                            height: 30,
-                            child: TextFormField(
-                              controller: _fromDateController,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'From',
-                                hintStyle: TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.15),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                suffixIcon: IconButton(
-                                  icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
-                                  onPressed: () => _pickDate(context, true),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ),
-                              onChanged: (value) {
-                                _fromDateBS = value;
-                              },
-                            ),
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      // From Date with Mask
+                      SizedBox(
+                        width: 120,
+                        height: 30,
+                        child: TextFormField(
+                          controller: _fromDateController,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
                           ),
-                          const SizedBox(width: 4),
-                          // To Date
-                          SizedBox(
-                            width: 120,
-                            height: 26,
-                            child: TextFormField(
-                              controller: _toDateController,
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              decoration: InputDecoration(
-                                hintText: 'To',
-                                hintStyle: TextStyle(
-                                  fontSize: 8,
-                                  color: Colors.white.withValues(alpha: 0.5),
-                                ),
-                                filled: true,
-                                fillColor: Colors.white.withValues(alpha: 0.15),
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                  borderSide: BorderSide.none,
-                                ),
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
-                                suffixIcon: IconButton(
-                                  icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
-                                  onPressed: () => _pickDate(context, false),
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                ),
-                              ),
-                              onChanged: (value) {
-                                _toDateBS = value;
-                              },
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          // Apply Button
-                          Container(
-                            height: 26,
-                            width: 50,
-                            child: ElevatedButton(
-                              onPressed: () {
-                                _fromDateBS = _fromDateController.text.trim();
-                                _toDateBS = _toDateController.text.trim();
-                                _fetchStatement();
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: colorScheme.primary,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                padding: const EdgeInsets.symmetric(horizontal: 6),
-                                minimumSize: const Size(0, 26),
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: Text(
-                                'Apply',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 4),
-                          // Download Button
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(8),
                           ],
+                          decoration: InputDecoration(
+                            hintText: 'YYYY/MM/DD',
+                            hintStyle: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white.withAlpha(128),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withAlpha(38),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            suffixIcon: IconButton(
+                              icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
+                              onPressed: () => _pickDate(context, true),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+                              String formatted = '';
+                              for (int i = 0; i < cleaned.length && i < 8; i++) {
+                                if (i == 4 || i == 6) {
+                                  formatted += '/';
+                                }
+                                formatted += cleaned[i];
+                              }
+                              _fromDateBS = cleaned;
+                              
+                              if (formatted != _fromDateController.text) {
+                                _fromDateController.value = TextEditingValue(
+                                  text: formatted,
+                                  selection: TextSelection.collapsed(
+                                    offset: formatted.length,
+                                  ),
+                                );
+                              }
+                            } else {
+                              _fromDateBS = '';
+                              _fromDateController.text = '';
+                            }
+                          },
+                        ),
                       ),
+                      const SizedBox(width: 4),
+                      // To Date with Mask
+                      SizedBox(
+                        width: 120,
+                        height: 30,
+                        child: TextFormField(
+                          controller: _toDateController,
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                          ),
+                          keyboardType: TextInputType.number,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(8),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: 'YYYY/MM/DD',
+                            hintStyle: TextStyle(
+                              fontSize: 9,
+                              color: Colors.white.withAlpha(128),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white.withAlpha(38),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(4),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+                            suffixIcon: IconButton(
+                              icon: Icon(Icons.calendar_today, color: Colors.white, size: 12),
+                              onPressed: () => _pickDate(context, false),
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                            ),
+                          ),
+                          onChanged: (value) {
+                            if (value.isNotEmpty) {
+                              final cleaned = value.replaceAll(RegExp(r'[^0-9]'), '');
+                              String formatted = '';
+                              for (int i = 0; i < cleaned.length && i < 8; i++) {
+                                if (i == 4 || i == 6) {
+                                  formatted += '/';
+                                }
+                                formatted += cleaned[i];
+                              }
+                              _toDateBS = cleaned;
+                              
+                              if (formatted != _toDateController.text) {
+                                _toDateController.value = TextEditingValue(
+                                  text: formatted,
+                                  selection: TextSelection.collapsed(
+                                    offset: formatted.length,
+                                  ),
+                                );
+                              }
+                            } else {
+                              _toDateBS = '';
+                              _toDateController.text = '';
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      // Apply Button
+                      Container(
+                        height: 26,
+                        width: 50,
+                        child: ElevatedButton(
+                          onPressed: () {
+                            if (_fromDateBS.length == 8 && _toDateBS.length == 8) {
+                              _fromDateBS = '${_fromDateBS.substring(0, 4)}/${_fromDateBS.substring(4, 6)}/${_fromDateBS.substring(6, 8)}';
+                              _toDateBS = '${_toDateBS.substring(0, 4)}/${_toDateBS.substring(4, 6)}/${_toDateBS.substring(6, 8)}';
+                            }
+                            _fetchStatement();
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.white,
+                            foregroundColor: colorScheme.primary,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            padding: const EdgeInsets.symmetric(horizontal: 6),
+                            minimumSize: const Size(0, 26),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
+                          child: Text(
+                            'Apply',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 10),
                 ],
               ),
             ),
 
-            // Filter Tabs with Download button in same row
+            // Filter Tabs
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Filter Tabs
                   Expanded(
                     child: SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
@@ -528,7 +622,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                               selected: isSelected,
                               onSelected: (_) => setState(() => _selectedFilter = filter),
                               backgroundColor: colorScheme.surfaceContainerHighest,
-                              selectedColor: filterColor.withValues(alpha: 0.2),
+                              selectedColor: filterColor.withAlpha(50),
                               checkmarkColor: filterColor,
                               labelStyle: textTheme.labelLarge?.copyWith(
                                 color: isSelected ? filterColor : colorScheme.onSurfaceVariant,
@@ -663,7 +757,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               Navigator.pushReplacementNamed(context, '/dashboard');
               break;
             case 1:
-              Navigator.pushReplacementNamed(context, '/consumption-history');
+              Navigator.pushReplacementNamed(context, '/reading-history');
               break;
             case 2:
               Navigator.pushReplacementNamed(context, '/self-reading');
@@ -732,7 +826,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     );
   }
 
-  // ✅ Compact Summary Item Builder
+  // Compact Summary Item Builder
   Widget _buildSummaryItemCompact(BuildContext context, String label, String value, IconData icon, Color textColor) {
     final textTheme = Theme.of(context).textTheme;
 
@@ -742,13 +836,13 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
           Container(
             padding: const EdgeInsets.all(3),
             decoration: BoxDecoration(
-              color: textColor.withValues(alpha: 0.15),
+              color: textColor.withAlpha(38),
               borderRadius: BorderRadius.circular(4),
             ),
             child: Icon(
               icon,
               size: 12,
-              color: textColor.withValues(alpha: 0.9),
+              color: textColor.withAlpha(230),
             ),
           ),
           const SizedBox(width: 4),
@@ -760,7 +854,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                 Text(
                   label,
                   style: textTheme.labelLarge?.copyWith(
-                    color: textColor.withValues(alpha: 0.7),
+                    color: textColor.withAlpha(180),
                     fontSize: 7,
                     fontWeight: FontWeight.w500,
                   ),
@@ -792,17 +886,17 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
     Color getBgColor() {
       switch (type) {
         case 'billNo':
-          return colorScheme.primaryContainer.withValues(alpha: 0.15);
+          return colorScheme.primaryContainer.withAlpha(38);
         case 'receipt':
-          return colorScheme.secondaryContainer.withValues(alpha: 0.2);
+          return colorScheme.secondaryContainer.withAlpha(50);
         case 'units':
-          return colorScheme.tertiaryContainer.withValues(alpha: 0.15);
+          return colorScheme.tertiaryContainer.withAlpha(38);
         case 'discount':
-          return colorScheme.primaryContainer.withValues(alpha: 0.15);
+          return colorScheme.primaryContainer.withAlpha(38);
         case 'penalty':
-          return colorScheme.errorContainer.withValues(alpha: 0.2);
+          return colorScheme.errorContainer.withAlpha(50);
         case 'advance':
-          return colorScheme.secondaryContainer.withValues(alpha: 0.15);
+          return colorScheme.secondaryContainer.withAlpha(38);
         default:
           return colorScheme.surfaceContainerLow;
       }
@@ -852,7 +946,7 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
         color: getBgColor(),
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: getTextColor().withValues(alpha: 0.2),
+          color: getTextColor().withAlpha(50),
           width: 0.5,
         ),
       ),
@@ -926,11 +1020,11 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
 
     Color getIconBgColor() {
       if (isPayment) {
-        return colorScheme.secondaryContainer.withValues(alpha: 0.2);
+        return colorScheme.secondaryContainer.withAlpha(50);
       } else if (isDue) {
-        return colorScheme.errorContainer.withValues(alpha: 0.3);
+        return colorScheme.errorContainer.withAlpha(75);
       } else {
-        return colorScheme.primaryContainer.withValues(alpha: 0.2);
+        return colorScheme.primaryContainer.withAlpha(50);
       }
     }
 
@@ -954,15 +1048,15 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
 
     return Card(
       color: isDue
-          ? colorScheme.errorContainer.withValues(alpha: 0.08)
+          ? colorScheme.errorContainer.withAlpha(20)
           : colorScheme.surfaceContainerLowest,
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
         side: BorderSide(
           color: isDue
-              ? colorScheme.error.withValues(alpha: 0.3)
-              : colorScheme.outlineVariant.withValues(alpha: 0.2),
+              ? colorScheme.error.withAlpha(75)
+              : colorScheme.outlineVariant.withAlpha(50),
           width: isDue ? 2 : 1,
         ),
       ),
@@ -1116,10 +1210,10 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
                   decoration: BoxDecoration(
                     color: isPayment
-                        ? colorScheme.secondaryContainer.withValues(alpha: 0.3)
+                        ? colorScheme.secondaryContainer.withAlpha(75)
                         : isDue
-                            ? colorScheme.errorContainer.withValues(alpha: 0.3)
-                            : colorScheme.primaryContainer.withValues(alpha: 0.3),
+                            ? colorScheme.errorContainer.withAlpha(75)
+                            : colorScheme.primaryContainer.withAlpha(75),
                     borderRadius: BorderRadius.circular(50),
                   ),
                   child: Text(
@@ -1146,60 +1240,53 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
   // PDF Download
   Future<void> _downloadPDF() async {
     if (_statementResponse == null || _statementResponse!.data.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No data to download'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      if (!mounted) return;
+      _showSnackBar('No data to download', isSuccess: false);
       return;
     }
+
+    if (!mounted) return;
 
     setState(() {
       _isDownloading = true;
     });
 
     try {
-      pw.Font? font;
-      try {
-        final fontData = await rootBundle.load('assets/fonts/mangal.ttf');
-        font = pw.Font.ttf(fontData.buffer.asByteData());
-      } catch (e) {
-        font = null;
-      }
-
       final pdf = pw.Document();
       final customerDetails = context.read<AuthProvider>().customerDetails;
 
       pdf.addPage(
         pw.MultiPage(
           build: (pw.Context context) => [
-            // Company Header
+            // Company Header - Using English Company
             pw.Container(
               alignment: pw.Alignment.center,
               child: pw.Column(
                 crossAxisAlignment: pw.CrossAxisAlignment.center,
                 children: [
                   pw.Text(
-                    companyName,
+                    _company.name,
                     style: pw.TextStyle(
                       fontSize: 20,
                       fontWeight: pw.FontWeight.bold,
-                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Text(
-                    companyAddress,
-                    style: pw.TextStyle(fontSize: 12, font: font),
+                    _company.address,
+                    style: pw.TextStyle(fontSize: 12),
                   ),
                   pw.Text(
-                    'Phone: $companyPhone',
-                    style: pw.TextStyle(fontSize: 10, font: font),
+                    'Phone: ${_company.phone}',
+                    style: pw.TextStyle(fontSize: 10),
                   ),
                   pw.Text(
-                    'Email: $companyEmail',
-                    style: pw.TextStyle(fontSize: 10, font: font),
+                    'Email: ${_company.email}',
+                    style: pw.TextStyle(fontSize: 10),
+                  ),
+                  pw.Text(
+                    'Website: ${_company.website}',
+                    style: pw.TextStyle(fontSize: 10),
                   ),
                   pw.SizedBox(height: 8),
                   pw.Divider(thickness: 2),
@@ -1223,27 +1310,26 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     style: pw.TextStyle(
                       fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
-                      font: font,
                     ),
                   ),
                   pw.SizedBox(height: 4),
                   pw.Row(
                     children: [
                       pw.Expanded(
-                        child: pw.Text('Name: ${customerDetails?.name ?? 'N/A'}', style: pw.TextStyle(font: font)),
+                        child: pw.Text('Name: ${customerDetails?.name ?? 'N/A'}'),
                       ),
                       pw.Expanded(
-                        child: pw.Text('CustomerID: ${customerDetails?.cusID ?? 'N/A'}', style: pw.TextStyle(font: font)),
+                        child: pw.Text('Customer ID: ${customerDetails?.cusID ?? 'N/A'}'),
                       ),
                     ],
                   ),
                   pw.Row(
                     children: [
                       pw.Expanded(
-                        child: pw.Text('Phone: ${customerDetails?.phone ?? 'N/A'}', style: pw.TextStyle(font: font)),
+                        child: pw.Text('Phone: ${customerDetails?.phone ?? 'N/A'}'),
                       ),
                       pw.Expanded(
-                        child: pw.Text('Ward: ${customerDetails?.wardNo ?? 'N/A'}', style: pw.TextStyle(font: font)),
+                        child: pw.Text('Ward: ${customerDetails?.wardNo ?? 'N/A'}'),
                       ),
                     ],
                   ),
@@ -1259,103 +1345,13 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
               children: [
                 pw.Text(
                   'From: ${_formatBSDateForDisplay(_fromDateBS)}',
-                  style: pw.TextStyle(fontSize: 10, font: font),
+                  style: pw.TextStyle(fontSize: 10),
                 ),
                 pw.Text(
                   'To: ${_formatBSDateForDisplay(_toDateBS)}',
-                  style: pw.TextStyle(fontSize: 10, font: font),
+                  style: pw.TextStyle(fontSize: 10),
                 ),
               ],
-            ),
-            
-            pw.SizedBox(height: 8),
-            
-            // Summary Section
-            pw.Container(
-              padding: const pw.EdgeInsets.all(8),
-              decoration: pw.BoxDecoration(
-                color: PdfColors.grey100,
-                borderRadius: pw.BorderRadius.circular(4),
-              ),
-              child: pw.Column(
-                children: [
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                    children: [
-                      pw.Column(
-                        children: [
-                          pw.Text('Total Bill', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_totalBillAmount.toStringAsFixed(2)}',
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: font),
-                          ),
-                        ],
-                      ),
-                      pw.Column(
-                        children: [
-                          pw.Text('Total Payment', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_totalPayment.toStringAsFixed(2)}',
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: font),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 6),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                    children: [
-                      pw.Column(
-                        children: [
-                          pw.Text('Total Penalty', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_totalPenalty.toStringAsFixed(2)}',
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: font),
-                          ),
-                        ],
-                      ),
-                      pw.Column(
-                        children: [
-                          pw.Text('Total Discount', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_totalDiscount.abs().toStringAsFixed(2)}',
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: font),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                  pw.SizedBox(height: 6),
-                  pw.Row(
-                    mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
-                    children: [
-                      pw.Column(
-                        children: [
-                          pw.Text('Total Advance', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_totalAdvance.toStringAsFixed(2)}',
-                            style: pw.TextStyle(fontWeight: pw.FontWeight.bold, font: font),
-                          ),
-                        ],
-                      ),
-                      pw.Column(
-                        children: [
-                          pw.Text('Due Amount', style: pw.TextStyle(font: font)),
-                          pw.Text(
-                            'Rs. ${_dueAmount.toStringAsFixed(2)}',
-                            style: pw.TextStyle(
-                              fontWeight: pw.FontWeight.bold,
-                              color: _dueAmount > 0 ? PdfColors.red : PdfColors.green,
-                              font: font,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ],
-              ),
             ),
             
             pw.SizedBox(height: 8),
@@ -1380,27 +1376,27 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                   children: [
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('SN', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('SN', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('Description', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('Description', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('Units', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('Units', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('Bill Amt', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('Bill Amt', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('Paid', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('Paid', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                     pw.Padding(
                       padding: const pw.EdgeInsets.all(4),
-                      child: pw.Text('Status', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8, font: font)),
+                      child: pw.Text('Status', style: pw.TextStyle(fontWeight: pw.FontWeight.bold, fontSize: 8)),
                     ),
                   ],
                 ),
@@ -1429,28 +1425,28 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                     children: [
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(index.toString(), style: pw.TextStyle(fontSize: 8, font: font)),
+                        child: pw.Text(index.toString(), style: pw.TextStyle(fontSize: 8)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(description, style: pw.TextStyle(fontSize: 8, font: font)),
+                        child: pw.Text(description, style: pw.TextStyle(fontSize: 8)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
-                        child: pw.Text(item.units.toString(), style: pw.TextStyle(fontSize: 8, font: font)),
+                        child: pw.Text(item.units.toString(), style: pw.TextStyle(fontSize: 8)),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
                           'Rs. ${displayBillAmt.toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 8, font: font),
+                          style: pw.TextStyle(fontSize: 8),
                         ),
                       ),
                       pw.Padding(
                         padding: const pw.EdgeInsets.all(4),
                         child: pw.Text(
                           'Rs. ${item.paid?.toStringAsFixed(2) ?? '0.00'}',
-                          style: pw.TextStyle(fontSize: 8, font: font),
+                          style: pw.TextStyle(fontSize: 8),
                         ),
                       ),
                       pw.Padding(
@@ -1464,7 +1460,6 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
                                 : isDueItem 
                                     ? PdfColors.red 
                                     : PdfColors.blue,
-                            font: font,
                           ),
                         ),
                       ),
@@ -1476,12 +1471,31 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
             
             pw.SizedBox(height: 16),
             
-            // Footer
+            // Footer with company details
             pw.Container(
               alignment: pw.Alignment.center,
-              child: pw.Text(
-                'Generated on: ${_formatBSDateForDisplay(_toDateBS)}',
-                style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600, font: font),
+              child: pw.Column(
+                children: [
+                  pw.Divider(thickness: 1),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    _company.name,
+                    style: pw.TextStyle(fontSize: 9, color: PdfColors.grey600),
+                  ),
+                  pw.Text(
+                    _company.address,
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                  ),
+                  pw.Text(
+                    'Phone: ${_company.phone} | Email: ${_company.email}',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey500),
+                  ),
+                  pw.SizedBox(height: 4),
+                  pw.Text(
+                    'Generated on: ${_formatBSDateForDisplay(_toDateBS)}',
+                    style: pw.TextStyle(fontSize: 8, color: PdfColors.grey400),
+                  ),
+                ],
               ),
             ),
           ],
@@ -1492,47 +1506,41 @@ class _AccountStatementScreenState extends State<AccountStatementScreen> {
 
       // Save PDF
       final directory = await getApplicationDocumentsDirectory();
-      final fileName = 'statement_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final fileName = 'account_statement_${DateTime.now().millisecondsSinceEpoch}.pdf';
       final filePath = '${directory.path}/$fileName';
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
 
+      if (!mounted) return;
+
       setState(() {
         _isDownloading = false;
       });
 
+      _showSnackBar('PDF downloaded: $fileName', isSuccess: true, duration: const Duration(seconds: 2));
+      
+      await Future.delayed(const Duration(milliseconds: 500));
+      
       final result = await OpenFile.open(filePath);
       
-      if (result.type == ResultType.done) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF downloaded: $fileName'),
-            backgroundColor: Colors.green,
-            action: SnackBarAction(
-              label: 'View',
-              onPressed: () => OpenFile.open(filePath),
-            ),
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('PDF saved at: $filePath'),
-            backgroundColor: Colors.blue,
-          ),
-        );
+      if (!mounted) return;
+      
+      if (mounted) {
+        ScaffoldMessenger.of(context).clearSnackBars();
+      }
+      
+      if (result.type != ResultType.done) {
+        _showSnackBar('PDF saved at: $filePath', isSuccess: true, duration: const Duration(seconds: 2));
       }
       
     } catch (e) {
+      if (!mounted) return;
+      
       setState(() {
         _isDownloading = false;
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error downloading statement: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      
+      _showSnackBar('Error downloading statement: $e', isSuccess: false, duration: const Duration(seconds: 2));
     }
   }
 

@@ -9,6 +9,7 @@ class CustomerDetails {
   final String reader;
   final String tapSize;
   final String meterNo;
+  final String lastReadingNumber;
   final double readingBill;
   final double dueBalance;
   final double advance;
@@ -29,6 +30,7 @@ class CustomerDetails {
     required this.reader,
     required this.tapSize,
     required this.meterNo,
+    required this.lastReadingNumber,
     required this.readingBill,
     required this.dueBalance,
     required this.advance,
@@ -51,6 +53,8 @@ class CustomerDetails {
       reader: json['reader'] as String? ?? '',
       tapSize: json['tapSize'] as String? ?? '',
       meterNo: json['meterNo']?.toString() ?? '',
+      lastReadingNumber: json['lastReadingNumber']?.toString() ?? '',
+
       readingBill: (json['readingBill'] as num?)?.toDouble() ?? 0.0,
       dueBalance: (json['dueBalance'] as num?)?.toDouble() ?? 0.0,
       advance: (json['advance'] as num?)?.toDouble() ?? 0.0,
@@ -83,6 +87,7 @@ class CustomerDetails {
       'status': status,
       'nextReadingDate': nextReadingDate,
       'lastReadingDate': lastReadingDate,
+      'lastReadingNumber':lastReadingNumber
     };
   }
 }

@@ -77,7 +77,7 @@ class BottomNavBar extends StatelessWidget {
     IconData icon,
     String label,
     int index, {
-    bool filled = false,
+    bool filled = false,  
     bool isCenter = false,
   }) {
     final isSelected = currentIndex == index;
@@ -85,7 +85,10 @@ class BottomNavBar extends StatelessWidget {
 
     if (isCenter) {
       return GestureDetector(
-        onTap: () => onTap(index),
+        onTap: () {
+          // Navigate to Self Reading when center button is tapped
+          onTap(index);
+        },
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -126,7 +129,10 @@ class BottomNavBar extends StatelessWidget {
     }
 
     return GestureDetector(
-      onTap: () => onTap(index),
+      onTap: () {
+        // Handle navigation based on index
+        onTap(index);
+      },
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         child: Column(

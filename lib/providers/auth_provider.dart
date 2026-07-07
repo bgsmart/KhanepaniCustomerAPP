@@ -572,30 +572,4 @@ class AuthProvider extends ChangeNotifier {
     ApiService.setTenantId(tenantId);
   }
 
-  // Get consumption data for graph
-  List<ConsumptionData> getConsumptionData() {
-    if (_consumptionHistory != null) {
-      return _consumptionHistory!.data;
-    }
-    return [];
-  }
-
-  // Get last 6 months consumption data
-  List<ConsumptionData> getLastSixMonthsConsumption() {
-    final data = getConsumptionData();
-    if (data.length > 6) {
-      return data.sublist(data.length - 6);
-    }
-    return data;
-  }
-
-  // Get consumption values as list of doubles
-  List<double> getConsumptionValues() {
-    return getConsumptionData().map((e) => e.consumption.toDouble()).toList();
-  }
-
-  // Get months as list of strings
-  List<String> getConsumptionMonths() {
-    return getConsumptionData().map((e) => e.month).toList();
-  }
 }

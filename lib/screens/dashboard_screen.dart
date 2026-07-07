@@ -88,7 +88,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         phone: customerDetails?.phone ?? 'N/A',
         meterNo: customerDetails?.meterNo ?? 'N/A',
         advance: customerDetails?.advance.toString() ?? "0",
-        showCustomerInfo: false, // ✅ Hide customer info in AppBar
+        showCustomerInfo: false,
         onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
         onLogoutTap: () => _handleLogout(context),
       ),
@@ -247,7 +247,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       title: 'Due Balance',
                       amount: dueBalance,
                       icon: Icons.payments,
-                      backgroundColor: colorScheme.primary,
+                      backgroundColor: colorScheme.error,
                       textColor: Colors.white,
                       fontSize: 22,
                     ),
@@ -288,7 +288,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         children: [
                           Flexible(
                             child: Text(
-                              'Consumption History (2081-2082)',
+                              'Consumption History',
                               style: textTheme.displaySmall,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -358,12 +358,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   QuickAction(
                     icon: Icons.account_circle,
                     label: 'Account',
-                    onTap: () => Navigator.pushNamed(context, '/account-details'),
+                    onTap: () => Navigator.pushNamed(context, '/account-statement'),
                   ),
                   QuickAction(
                     icon: Icons.history,
                     label: 'History',
-                    onTap: () => Navigator.pushNamed(context, '/consumption-history'),
+                    onTap: () => Navigator.pushNamed(context, '/reading-history'),
                   ),
                   QuickAction(
                     icon: Icons.camera_alt,
@@ -394,7 +394,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   QuickAction(
                     icon: Icons.support_agent,
                     label: 'Assistance',
-                    onTap: () {},
+                    onTap: () => Navigator.pushNamed(context, '/about'),
                   ),
                   QuickAction(
                     icon: Icons.receipt_long,
@@ -463,7 +463,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Navigator.pushReplacementNamed(context, '/dashboard');
               break;
             case 1:
-              Navigator.pushNamed(context, '/consumption-history');
+              Navigator.pushNamed(context, '/reading-history');
               break;
             case 2:
               Navigator.pushNamed(context, '/self-reading');
@@ -480,11 +480,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ✅ Customer Info Item Builder
+  // ✅ Customer Info Item Builder - FIXED
   Widget _buildCustomerInfoItem(BuildContext context, String label, String value, IconData icon, Color textColor) {
     final textTheme = Theme.of(context).textTheme;
 
-    return Expanded(
+    return Flexible(
       child: Row(
         children: [
           Icon(
@@ -493,7 +493,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             color: textColor.withValues(alpha: 0.7),
           ),
           const SizedBox(width: 8),
-          Expanded(
+          Flexible(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,

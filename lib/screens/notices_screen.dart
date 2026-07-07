@@ -157,7 +157,7 @@ class _NoticesScreenState extends State<NoticesScreen> {
               Navigator.pushReplacementNamed(context, '/dashboard');
               break;
             case 1:
-              Navigator.pushNamed(context, '/consumption-history');
+              Navigator.pushNamed(context, '/reading-history');
               break;
             case 2:
               // Already on notices
