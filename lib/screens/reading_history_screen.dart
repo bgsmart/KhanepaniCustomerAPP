@@ -831,27 +831,32 @@ class _ReadingHistoryScreenState extends State<ReadingHistoryScreen> with Widget
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // ✅ FIXED: Row with proper constraints - Removed Expanded from Text
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Reading History',
-                        style: textTheme.displayLarge?.copyWith(
-                          fontSize: 26,
-                          color: colorScheme.onSurface,
+                  // ✅ FIXED: Use Flexible instead of Expanded for the Column
+                  Flexible(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Reading History',
+                          style: textTheme.displayLarge?.copyWith(
+                            fontSize: 22,
+                            color: colorScheme.onSurface,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'View your meter reading and billing history.',
-                        style: textTheme.bodyMedium?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
+                        const SizedBox(height: 4),
+                        Text(
+                          'View your meter reading and billing history.',
+                          style: textTheme.bodyMedium?.copyWith(
+                            fontSize: 10,
+                            color: colorScheme.onSurfaceVariant,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                   // Download All Button
                   if (!_isLoading && _readingHistory.isNotEmpty)
@@ -886,7 +891,7 @@ class _ReadingHistoryScreenState extends State<ReadingHistoryScreen> with Widget
 
               const SizedBox(height: 16),
 
-              // Reading List
+              // ✅ FIXED: Reading List with proper Expanded
               Expanded(
                 child: _isLoading
                     ? const Center(child: CircularProgressIndicator())

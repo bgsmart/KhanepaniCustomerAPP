@@ -1,11 +1,11 @@
 // lib/screens/dashboard_screen.dart
+import 'package:KhanepaniApp/screens/payment_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/dashboard/app_bar.dart';
 import '../widgets/dashboard/stat_card.dart';
-import '../widgets/dashboard/budget_card.dart';
 import '../widgets/dashboard/line_graph.dart';
 import '../widgets/dashboard/quick_action.dart';
 import '../widgets/dashboard/self_reading_card.dart';
@@ -41,6 +41,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
     ];
   }
 
+  // ✅ Safe navigation methods using addPostFrameCallback
+  void _navigateToPayment() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => const PaymentScreen(),
+          ),
+        );
+      }
+    });
+  }
+
+  void _navigateTo(String route) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Navigator.pushNamed(context, route);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
@@ -52,30 +74,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     // Update consumption data from API if available
     if (consumptionHistory != null && 
-        consumptionHistory.data != null && 
-        consumptionHistory.data!.isNotEmpty) {
+        consumptionHistory.data.isNotEmpty) {
       _loadConsumptionDataFromAPI(consumptionHistory.data!);
     }
 
     // Calculate values from customer details
     String dueBalance = 'Rs. 0';
     if (customerDetails != null && customerDetails.readingBill != null && customerDetails.readingBill! > 0) {
-      dueBalance = 'Rs. ${customerDetails.readingBill!.toStringAsFixed(0)}';
+      dueBalance = 'Rs. ${customerDetails.readingBill.toStringAsFixed(0)}';
     }
 
     String lastPaid = 'Rs. 0';
-    if (customerDetails != null && customerDetails.lastPayAmount != null && customerDetails.lastPayAmount! > 0) {
-      lastPaid = 'Rs. ${customerDetails.lastPayAmount!.toStringAsFixed(0)}';
+    if (customerDetails != null && customerDetails.lastPayAmount! > 0) {
+      lastPaid = 'Rs. ${customerDetails.lastPayAmount.toStringAsFixed(0)}';
     }
 
-    String avgConsumption = '${customerDetails?.avgConsumption?.toStringAsFixed(0) ?? '0'} units';
-    String readingBill = 'Rs. ${customerDetails?.readingBill?.toStringAsFixed(0) ?? '0'}';
-    String advance = 'Rs. ${customerDetails?.advance?.toStringAsFixed(0) ?? '0'}';
-    
-
-    // Determine status
-    String statusText = 'Active';
-    Color statusColor = colorScheme.secondary;
+    String avgConsumption = '${customerDetails?.avgConsumption.toStringAsFixed(0) ?? '0'} units';
+    String readingBill = 'Rs. ${customerDetails?.readingBill.toStringAsFixed(0) ?? '0'}';
+    String advance = 'Rs. ${customerDetails?.advance.toStringAsFixed(0) ?? '0'}';
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -89,7 +105,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         meterNo: customerDetails?.meterNo ?? 'N/A',
         advance: customerDetails?.advance.toString() ?? "0",
         showCustomerInfo: false,
-        onNotificationTap: () => Navigator.pushNamed(context, '/notices'),
+        onNotificationTap: () => _navigateTo('/notices'),
         onLogoutTap: () => _handleLogout(context),
       ),
       body: SafeArea(
@@ -100,108 +116,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              // ✅ Customer Information Card (Like Summary)
+              // ✅ Customer Information Card
               if (customerDetails != null)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        colorScheme.primary,
-                        const Color.fromARGB(255, 2, 54, 166),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorScheme.primary.withValues(alpha: 0.2),
-                        blurRadius: 10,
-                        offset: const Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title
-                      Text(
-                        'CUSTOMER INFORMATION',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: Colors.white.withValues(alpha: 0.9),
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Row 1: Customer Name and ID
-                      Row(
-                        children: [
-                          _buildCustomerInfoItem(
-                            context,
-                            'Name:',
-                            customerDetails.name ?? 'N/A',
-                            Icons.person,
-                            Colors.white,
-                          ),
-                          _buildCustomerInfoItem(
-                            context,
-                            'Customer ID:',
-                            customerDetails.cusID ?? 'N/A',
-                            Icons.badge,
-                            Colors.white,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Row 2: Phone and Meter No
-                      Row(
-                        children: [
-                          _buildCustomerInfoItem(
-                            context,
-                            'Phone:',
-                            customerDetails.phone ?? 'N/A',
-                            Icons.phone,
-                            Colors.white,
-                          ),
-                          _buildCustomerInfoItem(
-                            context,
-                            'Meter No:',
-                            customerDetails.meterNo ?? customerDetails.cusID ?? 'N/A',
-                            Icons.speed,
-                            Colors.white,
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      // Row 3: Ward and Area
-                      Row(
-                        children: [
-                          _buildCustomerInfoItem(
-                            context,
-                            'Ward:',
-                            customerDetails.wardNo?.toString() ?? 'N/A',
-                            Icons.location_city,
-                            Colors.white,
-                          ),
-                          _buildCustomerInfoItem(
-                            context,
-                            'Area:',
-                            customerDetails.area ?? 'N/A',
-                            Icons.map,
-                            Colors.white,
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
+                _buildCustomerInfoCard(context, customerDetails, colorScheme, textTheme),
 
               // Stats Row
               Row(
@@ -237,36 +154,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               const SizedBox(height: 16),
 
-              // Budget Cards Row - Due Balance (Left) and Status (Right)
-              Row(
-                children: [
-                  // Due Balance Card (Left side - flex 2)
-                  Expanded(
-                    flex: 2,
-                    child: BudgetCard(
-                      title: 'Due Balance',
-                      amount: dueBalance,
-                      icon: Icons.payments,
-                      backgroundColor: colorScheme.error,
-                      textColor: Colors.white,
-                      fontSize: 22,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Status Card (Right side - flex 1)
-                  Expanded(
-                    flex: 1,
-                    child: BudgetCard(
-                      title: 'Status',
-                      amount: statusText,
-                      icon: Icons.check_circle,
-                      backgroundColor: statusColor,
-                      textColor: Colors.white,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
+              // ✅ Due Balance and Status Cards - with Conditional Color
+              _buildBudgetAndStatusCards(context, customerDetails),
 
               const SizedBox(height: 16),
 
@@ -340,116 +229,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
               // Self Reading Card
               SelfReadingCard(
-                onSelfReadingTap: () => Navigator.pushNamed(context, '/self-reading'),
+                onSelfReadingTap: () => _navigateTo('/self-reading'),
                 nextReadingDate: customerDetails?.nextReadingDate,
               ),
 
               const SizedBox(height: 16),
 
               // Quick Actions
-              Text(
-                'Quick Actions',
-                style: textTheme.displaySmall,
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  QuickAction(
-                    icon: Icons.account_circle,
-                    label: 'Account',
-                    onTap: () => Navigator.pushNamed(context, '/account-statement'),
-                  ),
-                  QuickAction(
-                    icon: Icons.history,
-                    label: 'History',
-                    onTap: () => Navigator.pushNamed(context, '/reading-history'),
-                  ),
-                  QuickAction(
-                    icon: Icons.camera_alt,
-                    label: 'Self Read',
-                    onTap: () => Navigator.pushNamed(context, '/self-reading'),
-                  ),
-                  QuickAction(
-                    icon: Icons.event_note,
-                    label: 'Schedule',
-                    onTap: () {},
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  QuickAction(
-                    icon: Icons.campaign,
-                    label: 'Complaint',
-                    onTap: () => Navigator.pushNamed(context, '/complaint'),
-                  ),
-                  QuickAction(
-                    icon: Icons.newspaper,
-                    label: 'News',
-                    onTap: () => Navigator.pushNamed(context, '/notices'),
-                  ),
-                  QuickAction(
-                    icon: Icons.support_agent,
-                    label: 'Assistance',
-                    onTap: () => Navigator.pushNamed(context, '/about'),
-                  ),
-                  QuickAction(
-                    icon: Icons.receipt_long,
-                    label: 'Bills',
-                    onTap: () => Navigator.pushNamed(context, '/account-statement'),
-                  ),
-                ],
-              ),
+              _buildQuickActions(context),
 
               const SizedBox(height: 16),
 
               // News & Alerts
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'News & Alerts',
-                    style: textTheme.displaySmall,
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/notices'),
-                    child: Text(
-                      'View all',
-                      style: textTheme.bodyMedium?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 230,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    _buildNewsCard(
-                      context,
-                      'Regular Pipe Maintenance in Ward 4',
-                      'Expected water disruption on June 12th between 10 AM to 2 PM for technical upgrades.',
-                      'Maintenance',
-                    ),
-                    const SizedBox(width: 12),
-                    _buildNewsCard(
-                      context,
-                      'Early Payment Bonus Active',
-                      'Pay your bill within 5 days of generation to get 5% cashback on your next reading.',
-                      'Offer',
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 20),
+              _buildNewsAndAlerts(context, colorScheme, textTheme),
             ],
           ),
         ),
@@ -460,19 +252,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() => _currentIndex = index);
           switch (index) {
             case 0:
-              Navigator.pushReplacementNamed(context, '/dashboard');
+              _navigateTo('/dashboard');
               break;
             case 1:
-              Navigator.pushNamed(context, '/reading-history');
+              _navigateTo('/reading-history');
               break;
             case 2:
-              Navigator.pushNamed(context, '/self-reading');
+              _navigateTo('/self-reading');
               break;
             case 3:
-              Navigator.pushNamed(context, '/account-statement');
+              _navigateTo('/account-statement');
               break;
             case 4:
-              Navigator.pushNamed(context, '/about');
+              _navigateTo('/about');
               break;
           }
         },
@@ -480,7 +272,446 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ✅ Customer Info Item Builder - FIXED
+  // ✅ Customer Information Card
+  Widget _buildCustomerInfoCard(
+    BuildContext context,
+    customerDetails,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.primary,
+            const Color.fromARGB(255, 2, 54, 166),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'CUSTOMER INFORMATION',
+            style: textTheme.labelLarge?.copyWith(
+              color: Colors.white.withOpacity(0.9),
+              fontSize: 14,
+              fontWeight: FontWeight.w700,
+              letterSpacing: 0.5,
+            ),
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 1: Customer Name and ID
+          Row(
+            children: [
+              _buildCustomerInfoItem(
+                context,
+                'Name:',
+                customerDetails.name,
+                Icons.person,
+                Colors.white,
+              ),
+              _buildCustomerInfoItem(
+                context,
+                'Customer ID:',
+                customerDetails.cusID,
+                Icons.badge,
+                Colors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 2: Phone and Meter No
+          Row(
+            children: [
+              _buildCustomerInfoItem(
+                context,
+                'Phone:',
+                customerDetails.phone,
+                Icons.phone,
+                Colors.white,
+              ),
+              _buildCustomerInfoItem(
+                context,
+                'Meter No:',
+                customerDetails.meterNo,
+                Icons.speed,
+                Colors.white,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          
+          // Row 3: Ward and Area
+          Row(
+            children: [
+              _buildCustomerInfoItem(
+                context,
+                'Address :',
+                customerDetails.palika + "," + customerDetails.wardNo.toString(),
+                Icons.location_city,
+                Colors.white,
+              ),
+              _buildCustomerInfoItem(
+                context,
+                'Area:',
+                customerDetails.area,
+                Icons.map,
+                Colors.white,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Budget and Status Cards Builder - with Conditional Color
+  Widget _buildBudgetAndStatusCards(BuildContext context, customerDetails) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final isActive = customerDetails?.status?.toLowerCase() == 'active';
+    final dueBalance = customerDetails?.readingBill ?? 0.0;
+    
+    // ✅ Determine if due balance is greater than 0
+    final bool hasDueBalance = dueBalance > 0;
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Left Card: Due Balance - with Conditional Background
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                // ✅ Conditional Gradient based on due balance
+                gradient: hasDueBalance
+                    ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colorScheme.errorContainer,
+                          colorScheme.errorContainer.withOpacity(0.8),
+                        ],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          colorScheme.primary,
+                          colorScheme.primary.withOpacity(0.8),
+                        ],
+                      ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: hasDueBalance
+                        ? colorScheme.error.withOpacity(0.2)
+                        : colorScheme.primary.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  // Left side: Label and Amount
+                  Expanded(
+                    flex: 2,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          hasDueBalance ? "Due Balance" : "No Due",
+                          style: TextStyle(
+                            color: hasDueBalance
+                                ? colorScheme.onErrorContainer
+                                : Colors.white70,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Rs. ${dueBalance.toStringAsFixed(2)}',
+                          style: TextStyle(
+                            color: hasDueBalance
+                                ? colorScheme.onErrorContainer
+                                : Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Right side: Pay Button
+                  Expanded(
+                    flex: 1,
+                    child: ElevatedButton(
+                      onPressed: _navigateToPayment,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: hasDueBalance 
+                            ? colorScheme.error 
+                            : colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 6,
+                        ),
+                        minimumSize: Size.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                      ),
+                      child: Text(
+                        hasDueBalance ? "Pay" : "Paid ✓",
+                        style: TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 10,
+                          color: hasDueBalance 
+                              ? colorScheme.error 
+                              : colorScheme.primary,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          
+          const SizedBox(width: 12),
+          
+          // Right Card: Status
+          Expanded(
+            child: Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: isActive
+                      ? [Colors.green.shade700, Colors.green.shade500]
+                      : [Colors.orange.shade700, Colors.orange.shade500],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: isActive
+                        ? Colors.green.withOpacity(0.2)
+                        : Colors.orange.withOpacity(0.2),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
+                children: [
+                  // Status indicator dot
+                  Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Status text
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Text(
+                        "Status",
+                        style: TextStyle(
+                          color: Colors.white70,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        customerDetails?.status ?? 'Unknown',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ✅ Quick Actions
+  Widget _buildQuickActions(BuildContext context) {
+    final textTheme = Theme.of(context).textTheme;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Quick Actions',
+          style: textTheme.displaySmall,
+        ),
+        const SizedBox(height: 12),
+        
+        // Row 1
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            QuickAction(
+              icon: Icons.account_circle,
+              label: 'Account',
+              onTap: () => _navigateTo('/account-statement'),
+            ),
+            QuickAction(
+              icon: Icons.history,
+              label: 'History',
+              onTap: () => _navigateTo('/reading-history'),
+            ),
+            QuickAction(
+              icon: Icons.camera_alt,
+              label: 'Self Read',
+              onTap: () => _navigateTo('/self-reading'),
+            ),
+            QuickAction(
+              icon: Icons.event_note,
+              label: 'Schedule',
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Schedule feature coming soon!'),
+                    duration: Duration(seconds: 2),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+        
+        const SizedBox(height: 12),
+        
+        // Row 2
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            QuickAction(
+              icon: Icons.campaign,
+              label: 'Complaint',
+              onTap: () => _navigateTo('/complaint'),
+            ),
+            QuickAction(
+              icon: Icons.newspaper,
+              label: 'News',
+              onTap: () => _navigateTo('/notices'),
+            ),
+            QuickAction(
+              icon: Icons.payment,
+              label: 'Utility Payment',
+              onTap: _navigateToPayment,
+            ),
+            QuickAction(
+              icon: Icons.receipt_long,
+              label: 'Bills',
+              onTap: () => _navigateTo('/account-statement'),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  // ✅ News & Alerts
+  Widget _buildNewsAndAlerts(
+    BuildContext context,
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'News & Alerts',
+              style: textTheme.displaySmall,
+            ),
+            TextButton(
+              onPressed: () => _navigateTo('/notices'),
+              child: Text(
+                'View all',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 230,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            physics: const AlwaysScrollableScrollPhysics(),
+            children: [
+              _buildNewsCard(
+                context,
+                'Regular Pipe Maintenance in Ward 4',
+                'Expected water disruption on June 12th between 10 AM to 2 PM for technical upgrades.',
+                'Maintenance',
+              ),
+              const SizedBox(width: 12),
+              _buildNewsCard(
+                context,
+                'Early Payment Bonus Active',
+                'Pay your bill within 5 days of generation to get 5% cashback on your next reading.',
+                'Offer',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  // ✅ Customer Info Item Builder
   Widget _buildCustomerInfoItem(BuildContext context, String label, String value, IconData icon, Color textColor) {
     final textTheme = Theme.of(context).textTheme;
 
@@ -490,7 +721,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           Icon(
             icon,
             size: 20,
-            color: textColor.withValues(alpha: 0.7),
+            color: textColor.withOpacity(0.7),
           ),
           const SizedBox(width: 8),
           Flexible(
@@ -501,7 +732,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text(
                   label,
                   style: textTheme.labelLarge?.copyWith(
-                    color: textColor.withValues(alpha: 0.6),
+                    color: textColor.withOpacity(0.6),
                     fontSize: 10,
                     fontWeight: FontWeight.w500,
                   ),
@@ -530,7 +761,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
     
-    // Show confirmation dialog
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -552,7 +782,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (confirm == true) {
       await authProvider.logout();
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        _navigateTo('/login');
       }
     }
   }
@@ -564,15 +794,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final List<double> newData = [];
     final List<String> newMonths = [];
     
-    // Sort data by month to ensure correct order
     final sortedData = List<ConsumptionData>.from(data)
       ..sort((a, b) => a.month.compareTo(b.month));
     
-    // Convert Nepali month format to readable format
     for (var item in sortedData) {
       newData.add(item.consumption.toDouble());
-      
-      // Convert "2081/04" to Nepali month name
       String monthLabel = _convertNepaliMonth(item.month);
       newMonths.add(monthLabel);
     }
@@ -585,68 +811,25 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   // Convert Nepali month string to readable month name
   String _convertNepaliMonth(String monthStr) {
-    // monthStr format: "2081/04" where 04 is the month number
     try {
       final parts = monthStr.split('/');
       if (parts.length == 2) {
         final monthNum = int.parse(parts[1]);
         
-        // Nepali month names (BS calendar)
         const nepaliMonths = [
-          'बैशाख',  // 1
-          'जेठ',    // 2
-          'असार',   // 3
-          'साउन',   // 4
-          'भदौ',    // 5
-          'असोज',   // 6
-          'कात्तिक', // 7
-          'मंसिर',   // 8
-          'पुष',     // 9
-          'माघ',     // 10
-          'फागुन',   // 11
-          'चैत'      // 12
+          'बैशाख', 'जेठ', 'असार', 'साउन', 
+          'भदौ', 'असोज', 'कात्तिक', 'मंसिर', 
+          'पुष', 'माघ', 'फागुन', 'चैत'
         ];
         
         if (monthNum >= 1 && monthNum <= 12) {
           return nepaliMonths[monthNum - 1];
         }
       }
-      return monthStr; // fallback
+      return monthStr;
     } catch (e) {
-      return monthStr; // fallback
+      return monthStr;
     }
-  }
-
-  Widget _buildDetailRow(BuildContext context, String label, String value) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: 120,
-            child: Text(
-              label,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          Expanded(
-            child: Text(
-              value,
-              style: textTheme.bodyMedium?.copyWith(
-                color: colorScheme.onSurface,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildNewsCard(BuildContext context, String title, String description, String tag) {
@@ -673,7 +856,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Image Container
           Container(
             height: 100,
             width: double.infinity,
@@ -689,14 +871,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          // Content
           Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Tag
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
@@ -717,7 +897,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 6),
-                // Title
                 Text(
                   title,
                   style: textTheme.displaySmall?.copyWith(
@@ -728,7 +907,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                // Description
                 Text(
                   description,
                   style: textTheme.bodyMedium?.copyWith(

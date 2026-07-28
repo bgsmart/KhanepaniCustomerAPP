@@ -1,6 +1,8 @@
 // lib/main.dart
+import 'package:KhanepaniApp/providers/payment_provider.dart';
 import 'package:KhanepaniApp/screens/complaint_screen.dart';
 import 'package:KhanepaniApp/screens/forgot_password_screen.dart';
+import 'package:KhanepaniApp/screens/payment_screen.dart';
 import 'package:KhanepaniApp/screens/reading_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -15,7 +17,7 @@ import 'screens/account_statement_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/notice_provider.dart';
 import 'providers/reading_provider.dart';
-import 'providers/complaint_provider.dart';  // ✅ Add this import
+import 'providers/complaint_provider.dart';
 import 'theme/app_theme.dart';
 
 void main() {
@@ -32,7 +34,8 @@ class AquaFlowApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => AuthProvider()),
         ChangeNotifierProvider(create: (_) => NoticeProvider()),
         ChangeNotifierProvider(create: (_) => ReadingProvider()),
-        ChangeNotifierProvider(create: (_) => ComplaintProvider()), // ✅ Add ComplaintProvider
+        ChangeNotifierProvider(create: (_) => ComplaintProvider()),
+        ChangeNotifierProvider(create: (_) => PaymentProvider()), // ✅ Add PaymentProvider here
       ],
       child: MaterialApp(
         title: 'HWSHBOARD',
@@ -50,8 +53,18 @@ class AquaFlowApp extends StatelessWidget {
           '/consumption-history': (context) => const ConsumptionHistoryScreen(),
           '/account-statement': (context) => const AccountStatementScreen(),
           '/reading-history': (context) => const ReadingHistoryScreen(),
-          '/complaint': (context) => const ComplaintScreen(),  // ✅ Fixed: changed to /complaint
-          '/complain': (context) => const ComplaintScreen(),  // ✅ Also keep this for backward compatibility
+          '/complaint': (context) => const ComplaintScreen(),
+          '/complain': (context) => const ComplaintScreen(),
+          '/payment': (context) => const PaymentScreen(),
+        },
+        onUnknownRoute: (settings) {
+          return MaterialPageRoute(
+            builder: (context) => const Scaffold(
+              body: Center(
+                child: Text('Page not found'),
+              ),
+            ),
+          );
         },
       ),
     );

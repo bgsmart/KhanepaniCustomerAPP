@@ -95,7 +95,6 @@ class _LoginScreenState extends State<LoginScreen> {
         final customerId = int.parse(_customerIdController.text.trim());
         final password = _passwordController.text.trim();
         
-        // Attempt login
         final success = await authProvider.loginWithCustomerSimple(
           customerID: customerId,
           password: password,
@@ -105,10 +104,8 @@ class _LoginScreenState extends State<LoginScreen> {
           setState(() => _isLoading = false);
           
           if (success && authProvider.isAuthenticated) {
-            // ✅ Save credentials if remember me is checked
             await _saveCredentials(customerId.toString(), password);
             
-            // Show success message
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -118,7 +115,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             );
             
-            // Navigate to dashboard
             Navigator.pushReplacementNamed(context, '/dashboard');
           }
         }
@@ -152,12 +148,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ✅ New method to handle forgot password
   void _handleForgotPassword() {
     if (_customerIdController.text.isNotEmpty) {
       try {
         final customerId = int.parse(_customerIdController.text.trim());
-        // Pass customer ID to forgot password screen
         Navigator.pushNamed(
           context, 
           '/forgot-password',
@@ -176,49 +170,78 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final authProvider = context.watch<AuthProvider>();
+    
+    // ✅ Responsive sizing based on screen dimensions
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 360;
+    final isMediumScreen = screenSize.width >= 360 && screenSize.width < 600;
+    final isLargeScreen = screenSize.width >= 600 && screenSize.width < 1200;
+    final isExtraLargeScreen = screenSize.width >= 1200;
+    
+    // ✅ Responsive padding and spacing
+    final horizontalPadding = isSmallScreen ? 12.0 : (isMediumScreen ? 20.0 : (isLargeScreen ? 24.0 : 32.0));
+    final verticalPadding = isSmallScreen ? 16.0 : 20.0;
+    final cardPadding = isSmallScreen ? 16.0 : (isMediumScreen ? 20.0 : 24.0);
+    final logoSize = isSmallScreen ? 60.0 : (isMediumScreen ? 80.0 : (isLargeScreen ? 100.0 : 120.0));
+    final fontSizeMultiplier = isSmallScreen ? 0.85 : (isMediumScreen ? 1.0 : (isLargeScreen ? 1.1 : 1.2));
+    final buttonHeight = isSmallScreen ? 48.0 : (isMediumScreen ? 52.0 : 56.0);
+    final maxWidth = isExtraLargeScreen ? 400.0 : (isLargeScreen ? 500.0 : double.infinity);
 
     return Scaffold(
       backgroundColor: colorScheme.background,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Company Logo
-                _buildLogo(colorScheme),
-                const SizedBox(height: 16),
-                
-                // Company Name
-                _buildCompanyName(textTheme, colorScheme),
-                const SizedBox(height: 4),
-                
-                // Company Address
-                _buildCompanyAddress(textTheme, colorScheme),
-                const SizedBox(height: 32),
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: verticalPadding,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: maxWidth,
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Company Logo
+                  _buildLogo(colorScheme, logoSize),
+                  SizedBox(height: screenSize.height * 0.02),
+                  
+                  // Company Name
+                  _buildCompanyName(textTheme, colorScheme, fontSizeMultiplier),
+                  SizedBox(height: screenSize.height * 0.005),
+                  
+                  // Company Address
+                  _buildCompanyAddress(textTheme, colorScheme, fontSizeMultiplier),
+                  SizedBox(height: screenSize.height * 0.03),
 
-                // Error Message Display
-                if (authProvider.errorMessage != null)
-                  _buildErrorMessage(authProvider, textTheme, colorScheme),
+                  // Error Message Display
+                  if (authProvider.errorMessage != null)
+                    _buildErrorMessage(authProvider, textTheme, colorScheme),
 
-                // Login Card
-                _buildLoginCard(
-                  colorScheme, 
-                  textTheme, 
-                  authProvider,
-                ),
+                  // Login Card
+                  _buildLoginCard(
+                    colorScheme, 
+                    textTheme, 
+                    authProvider,
+                    cardPadding,
+                    fontSizeMultiplier,
+                    buttonHeight,
+                    isSmallScreen,
+                  ),
 
-                const SizedBox(height: 16),
+                  SizedBox(height: screenSize.height * 0.02),
 
-                // Quick Info Cards
-                _buildInfoCards(colorScheme, textTheme),
+                  // Quick Info Cards - UPDATED with overflow fix
+                  _buildInfoCards(colorScheme, textTheme, isSmallScreen),
 
-                const SizedBox(height: 16),
+                  SizedBox(height: screenSize.height * 0.02),
 
-                // Powered By
-                _buildPoweredBy(textTheme, colorScheme),
-              ],
+                  // Powered By
+                  _buildPoweredBy(textTheme, colorScheme, fontSizeMultiplier),
+                ],
+              ),
             ),
           ),
         ),
@@ -226,11 +249,11 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  // ✅ Extracted widget builders for better readability
-  Widget _buildLogo(ColorScheme colorScheme) {
+  // ✅ Extracted widget builders with responsive parameters
+  Widget _buildLogo(ColorScheme colorScheme, double size) {
     return Container(
-      width: 120,
-      height: 80,
+      width: size * 1.2,
+      height: size * 0.8,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
@@ -244,8 +267,8 @@ class _LoginScreenState extends State<LoginScreen> {
         borderRadius: BorderRadius.circular(20),
         child: Image.asset(
           'assets/images/Logo.png',
-          width: 100,
-          height: 100,
+          width: size,
+          height: size,
           fit: BoxFit.contain,
           errorBuilder: (context, error, stackTrace) {
             return Container(
@@ -259,9 +282,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   ],
                 ),
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.water_drop,
-                size: 50,
+                size: size * 0.5,
                 color: Colors.white,
               ),
             );
@@ -271,12 +294,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildCompanyName(TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildCompanyName(
+    TextTheme textTheme, 
+    ColorScheme colorScheme,
+    double fontSizeMultiplier,
+  ) {
     return Text(
       AppConfig.companyName,
       style: TextStyle(
         fontFamily: 'NotoSansDevanagari',
-        fontSize: 20,
+        fontSize: 20 * fontSizeMultiplier,
         fontWeight: FontWeight.w700,
         color: colorScheme.primary,
         height: 1.2,
@@ -285,12 +312,16 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildCompanyAddress(TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildCompanyAddress(
+    TextTheme textTheme, 
+    ColorScheme colorScheme,
+    double fontSizeMultiplier,
+  ) {
     return Text(
       AppConfig.companyAddress,
       style: TextStyle(
         fontFamily: 'NotoSansDevanagari',
-        fontSize: 14,
+        fontSize: 14 * fontSizeMultiplier,
         fontWeight: FontWeight.w400,
         color: colorScheme.onSurfaceVariant,
         height: 1.4,
@@ -348,6 +379,10 @@ class _LoginScreenState extends State<LoginScreen> {
     ColorScheme colorScheme,
     TextTheme textTheme,
     AuthProvider authProvider,
+    double cardPadding,
+    double fontSizeMultiplier,
+    double buttonHeight,
+    bool isSmallScreen,
   ) {
     return Card(
       elevation: 0,
@@ -358,27 +393,50 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(cardPadding),
         child: Form(
           key: _formKey,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Customer ID
-              _buildCustomerIdField(textTheme, colorScheme, authProvider),
-              const SizedBox(height: 16),
+              _buildCustomerIdField(
+                textTheme, 
+                colorScheme, 
+                authProvider,
+                fontSizeMultiplier,
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
 
               // Password
-              _buildPasswordField(textTheme, colorScheme, authProvider),
-              const SizedBox(height: 16),
+              _buildPasswordField(
+                textTheme, 
+                colorScheme, 
+                authProvider,
+                fontSizeMultiplier,
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 12 : 16),
 
               // Remember Me
-              _buildRememberMeCheckbox(textTheme, colorScheme, authProvider),
-              const SizedBox(height: 24),
+              _buildRememberMeCheckbox(
+                textTheme, 
+                colorScheme, 
+                authProvider,
+                fontSizeMultiplier,
+                isSmallScreen,
+              ),
+              SizedBox(height: isSmallScreen ? 16 : 24),
 
               // Login Button
-              _buildLoginButton(colorScheme, authProvider),
-              const SizedBox(height: 12),
+              _buildLoginButton(
+                colorScheme, 
+                authProvider,
+                buttonHeight,
+                fontSizeMultiplier,
+              ),
+              SizedBox(height: isSmallScreen ? 8 : 12),
             ],
           ),
         ),
@@ -390,23 +448,32 @@ class _LoginScreenState extends State<LoginScreen> {
     TextTheme textTheme,
     ColorScheme colorScheme,
     AuthProvider authProvider,
+    double fontSizeMultiplier,
+    bool isSmallScreen,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           'Customer ID',
-          style: textTheme.labelLarge,
+          style: textTheme.labelLarge?.copyWith(
+            fontSize: 14 * fontSizeMultiplier,
+          ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: isSmallScreen ? 2 : 4),
         TextFormField(
           controller: _customerIdController,
           keyboardType: TextInputType.number,
           maxLength: 10,
           enabled: !authProvider.isLoading && !_isLoading,
+          style: TextStyle(fontSize: 16 * fontSizeMultiplier),
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.person_outline),
+            prefixIcon: Icon(
+              Icons.person_outline,
+              size: isSmallScreen ? 20 : 24,
+            ),
             hintText: 'Enter your Customer ID',
+            hintStyle: TextStyle(fontSize: 14 * fontSizeMultiplier),
             counterText: '',
             filled: true,
             fillColor: colorScheme.surface,
@@ -435,9 +502,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: colorScheme.error,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 10 : 12,
             ),
           ),
           onChanged: (value) {
@@ -467,6 +534,8 @@ class _LoginScreenState extends State<LoginScreen> {
     TextTheme textTheme,
     ColorScheme colorScheme,
     AuthProvider authProvider,
+    double fontSizeMultiplier,
+    bool isSmallScreen,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -476,34 +545,50 @@ class _LoginScreenState extends State<LoginScreen> {
           children: [
             Text(
               'Password',
-              style: textTheme.labelLarge,
+              style: textTheme.labelLarge?.copyWith(
+                fontSize: 14 * fontSizeMultiplier,
+              ),
             ),
             TextButton(
               onPressed: authProvider.isLoading || _isLoading 
                   ? null 
                   : _handleForgotPassword,
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 4 : 8,
+                  vertical: isSmallScreen ? 4 : 8,
+                ),
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
               child: Text(
                 'Forgot Password?',
                 style: textTheme.labelLarge?.copyWith(
                   color: colorScheme.primary,
                   fontWeight: FontWeight.w600,
+                  fontSize: 12 * fontSizeMultiplier,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: isSmallScreen ? 2 : 4),
         TextFormField(
           controller: _passwordController,
           obscureText: _obscurePassword,
           enabled: !authProvider.isLoading && !_isLoading,
+          style: TextStyle(fontSize: 16 * fontSizeMultiplier),
           decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.lock_outline),
+            prefixIcon: Icon(
+              Icons.lock_outline,
+              size: isSmallScreen ? 20 : 24,
+            ),
             suffixIcon: IconButton(
               icon: Icon(
                 _obscurePassword
                     ? Icons.visibility
                     : Icons.visibility_off,
+                size: isSmallScreen ? 20 : 24,
               ),
               onPressed: () {
                 setState(() {
@@ -512,6 +597,7 @@ class _LoginScreenState extends State<LoginScreen> {
               },
             ),
             hintText: 'Enter your password',
+            hintStyle: TextStyle(fontSize: 14 * fontSizeMultiplier),
             filled: true,
             fillColor: colorScheme.surface,
             border: OutlineInputBorder(
@@ -539,9 +625,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 color: colorScheme.error,
               ),
             ),
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: isSmallScreen ? 12 : 16,
+              vertical: isSmallScreen ? 10 : 12,
             ),
           ),
           onChanged: (value) {
@@ -567,47 +653,61 @@ class _LoginScreenState extends State<LoginScreen> {
     TextTheme textTheme,
     ColorScheme colorScheme,
     AuthProvider authProvider,
+    double fontSizeMultiplier,
+    bool isSmallScreen,
   ) {
     return Row(
       children: [
-        Checkbox(
-          value: _rememberMe,
-          onChanged: authProvider.isLoading || _isLoading
-              ? null
-              : (value) {
-                  setState(() {
-                    _rememberMe = value ?? false;
-                    if (!_rememberMe) {
-                      _clearSavedCredentials();
-                    }
-                  });
-                },
-          activeColor: colorScheme.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(4),
+        SizedBox(
+          width: isSmallScreen ? 40 : 48,
+          height: isSmallScreen ? 40 : 48,
+          child: Checkbox(
+            value: _rememberMe,
+            onChanged: authProvider.isLoading || _isLoading
+                ? null
+                : (value) {
+                    setState(() {
+                      _rememberMe = value ?? false;
+                      if (!_rememberMe) {
+                        _clearSavedCredentials();
+                      }
+                    });
+                  },
+            activeColor: colorScheme.primary,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(4),
+            ),
           ),
         ),
         Text(
           'Remember this device',
-          style: textTheme.bodyMedium,
+          style: textTheme.bodyMedium?.copyWith(
+            fontSize: 14 * fontSizeMultiplier,
+          ),
         ),
         const Spacer(),
         Text(
           '🔒 Secure',
           style: textTheme.labelSmall?.copyWith(
             color: colorScheme.primary,
+            fontSize: 11 * fontSizeMultiplier,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildLoginButton(ColorScheme colorScheme, AuthProvider authProvider) {
+  Widget _buildLoginButton(
+    ColorScheme colorScheme, 
+    AuthProvider authProvider,
+    double buttonHeight,
+    double fontSizeMultiplier,
+  ) {
     final isLoading = authProvider.isLoading || _isLoading;
     
     return SizedBox(
       width: double.infinity,
-      height: 56,
+      height: buttonHeight,
       child: ElevatedButton(
         onPressed: isLoading ? null : _login,
         style: ElevatedButton.styleFrom(
@@ -620,18 +720,18 @@ class _LoginScreenState extends State<LoginScreen> {
           shadowColor: colorScheme.primary.withOpacity(0.3),
         ),
         child: isLoading
-            ? const SizedBox(
+            ? SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
                   color: Colors.white,
-                  strokeWidth: 2,
+                  strokeWidth: 2.5,
                 ),
               )
-            : const Text(
+            : Text(
                 'Login',
                 style: TextStyle(
-                  fontSize: 18,
+                  fontSize: 14 * fontSizeMultiplier,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -639,119 +739,151 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildInfoCards(ColorScheme colorScheme, TextTheme textTheme) {
-    return Row(
-      children: [
-        Expanded(
-          child: Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: colorScheme.outlineVariant.withOpacity(0.3),
-              ),
+  // ✅ FIXED: Info Cards with proper overflow handling
+  // ✅ FIXED: Info Cards in same row for all devices
+Widget _buildInfoCards(
+  ColorScheme colorScheme, 
+  TextTheme textTheme,
+  bool isSmallScreen,
+) {
+  return Row(
+    children: [
+      Expanded(
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withOpacity(0.3),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.secondaryContainer.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.verified,
-                      color: Color(0xFF006E28),
-                      size: 20,
-                    ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.secondaryContainer.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
+                  child: Icon(
+                    Icons.verified,
+                    color: const Color(0xFF006E28),
+                    size: isSmallScreen ? 16 : 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'SECURITY',
                         style: textTheme.labelLarge?.copyWith(
                           color: colorScheme.onSurfaceVariant,
-                          fontSize: 10,
-                        ),
-                      ),
-                      Text(
-                        'SSL Encrypted',
-                        style: textTheme.labelLarge?.copyWith(
+                          fontSize: isSmallScreen ? 8 : 10,
                           fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Flexible(
+                        child: Text(
+                          'SSL Encrypted',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: isSmallScreen ? 11 : 14,
+                            height: 1.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Card(
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: colorScheme.outlineVariant.withOpacity(0.3),
-              ),
+      ),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: colorScheme.outlineVariant.withOpacity(0.3),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.tertiaryContainer.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.support_agent,
-                      color: Color(0xFF4C4ACA),
-                      size: 20,
-                    ),
+          ),
+          child: Padding(
+            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+            child: Row(
+              children: [
+                Container(
+                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                  decoration: BoxDecoration(
+                    color: colorScheme.tertiaryContainer.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  const SizedBox(width: 8),
-                  Column(
+                  child: Icon(
+                    Icons.support_agent,
+                    color: const Color(0xFF4C4ACA),
+                    size: isSmallScreen ? 16 : 20,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Text(
                         'ASSISTANCE',
                         style: textTheme.labelLarge?.copyWith(
                           color: colorScheme.onSurfaceVariant,
-                          fontSize: 10,
-                        ),
-                      ),
-                      Text(
-                        '24/7 Support',
-                        style: textTheme.labelLarge?.copyWith(
+                          fontSize: isSmallScreen ? 8 : 10,
                           fontWeight: FontWeight.w600,
+                          height: 1.2,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      Flexible(
+                        child: Text(
+                          '24/7 Support',
+                          style: textTheme.labelLarge?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontSize: isSmallScreen ? 11 : 14,
+                            height: 1.2,
+                          ),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),
-      ],
-    );
-  }
+      ),
+    ],
+  );
+}
 
-  Widget _buildPoweredBy(TextTheme textTheme, ColorScheme colorScheme) {
+  Widget _buildPoweredBy(
+    TextTheme textTheme, 
+    ColorScheme colorScheme,
+    double fontSizeMultiplier,
+  ) {
     return Center(
       child: Text(
         'Powered By : Iconsft Technologies',
         style: textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant.withOpacity(0.6),
-          fontSize: 12,
+          fontSize: 12 * fontSizeMultiplier,
           fontWeight: FontWeight.w400,
         ),
       ),
