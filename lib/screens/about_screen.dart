@@ -152,7 +152,7 @@ class AboutScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Powered By: Iconsft Technologies',
+                    'Powered By: Devanasoft Pvt. Ltd.',
                     style: textTheme.bodySmall?.copyWith(
                       color: Colors.grey[500],
                     ),

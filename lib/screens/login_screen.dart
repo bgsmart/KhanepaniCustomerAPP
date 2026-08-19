@@ -880,7 +880,7 @@ Widget _buildInfoCards(
   ) {
     return Center(
       child: Text(
-        'Powered By : Iconsft Technologies',
+        'Powered By : Devanasoft Pvt. Ltd.',
         style: textTheme.bodySmall?.copyWith(
           color: colorScheme.onSurfaceVariant.withOpacity(0.6),
           fontSize: 12 * fontSizeMultiplier,

@@ -466,37 +466,37 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   // Right side: Pay Button
-                  Expanded(
-                    flex: 1,
-                    child: ElevatedButton(
-                      onPressed: _navigateToPayment,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: hasDueBalance 
-                            ? colorScheme.error 
-                            : colorScheme.primary,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                      ),
-                      child: Text(
-                        hasDueBalance ? "Pay" : "Paid ✓",
-                        style: TextStyle(
-                          fontWeight: FontWeight.w600,
-                          fontSize: 10,
-                          color: hasDueBalance 
-                              ? colorScheme.error 
-                              : colorScheme.primary,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // Expanded(
+                  //   flex: 1,
+                  //   child: ElevatedButton(
+                  //     onPressed: _navigateToPayment,
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: Colors.white,
+                  //       foregroundColor: hasDueBalance 
+                  //           ? colorScheme.error 
+                  //           : colorScheme.primary,
+                  //       padding: const EdgeInsets.symmetric(
+                  //         horizontal: 12,
+                  //         vertical: 6,
+                  //       ),
+                  //       minimumSize: Size.zero,
+                  //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(20),
+                  //       ),
+                  //     ),
+                  //     child: Text(
+                  //       hasDueBalance ? "Pay" : "Paid ✓",
+                  //       style: TextStyle(
+                  //         fontWeight: FontWeight.w600,
+                  //         fontSize: 10,
+                  //         color: hasDueBalance 
+                  //             ? colorScheme.error 
+                  //             : colorScheme.primary,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ),

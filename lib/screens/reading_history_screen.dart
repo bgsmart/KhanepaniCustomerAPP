@@ -1258,34 +1258,34 @@ class _ReadingHistoryScreenState extends State<ReadingHistoryScreen> with Widget
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 if (reading.isDue)
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.pushNamed(
-                        context, 
-                        '/payment',
-                        arguments: {'billNo': reading.billNo},
-                      );
-                    },
-                    icon: Icon(
-                      Icons.payment,
-                      size: 18,
-                      color: colorScheme.primary,
-                    ),
-                    label: Text(
-                      'Pay Now',
-                      style: textTheme.labelLarge?.copyWith(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    style: TextButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      backgroundColor: colorScheme.primary.withAlpha(10),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
+                  // TextButton.icon(
+                  //   onPressed: () {
+                  //     Navigator.pushNamed(
+                  //       context, 
+                  //       '/payment',
+                  //       arguments: {'billNo': reading.billNo},
+                  //     );
+                  //   },
+                  //   icon: Icon(
+                  //     Icons.payment,
+                  //     size: 18,
+                  //     color: colorScheme.primary,
+                  //   ),
+                  //   label: Text(
+                  //     'Pay Now',
+                  //     style: textTheme.labelLarge?.copyWith(
+                  //       color: colorScheme.primary,
+                  //       fontWeight: FontWeight.w600,
+                  //     ),
+                  //   ),
+                  //   style: TextButton.styleFrom(
+                  //     padding: const EdgeInsets.symmetric(horizontal: 12),
+                  //     backgroundColor: colorScheme.primary.withAlpha(10),
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(8),
+                  //     ),
+                  //   ),
+                  // ),
                 // Download Individual Bill Button
                 TextButton.icon(
                   onPressed: _isDownloading ? null : () => _downloadBillPDF(reading),
