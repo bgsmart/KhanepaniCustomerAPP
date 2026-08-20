@@ -12,17 +12,18 @@ class AboutScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(
+        title: const Text(
           'About ${AppConfig.companyName}',
-          style: const TextStyle(
+          style:  TextStyle(
             fontWeight: FontWeight.bold,
+            color: Colors.white
           ),
         ),
         backgroundColor: colorScheme.primary,
         foregroundColor: Colors.white,
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(Icons.arrow_back, color: Colors.white,),
           onPressed: () => Navigator.pop(context),
         ),
       ),

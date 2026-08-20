@@ -20,11 +20,11 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _currentIndex = 0;
-  
+
   // Consumption data
   List<double> _consumptionData = [];
   List<String> _months = [];
-  
+
   @override
   void initState() {
     super.initState();
@@ -35,9 +35,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     // Default sample data if no API data available
     _consumptionData = [122, 108, 112, 120, 110, 95, 84, 96, 92, 107, 119, 145];
     _months = [
-      'बैशाख', 'जेठ', 'असार', 'साउन', 
-      'भदौ', 'असोज', 'कात्तिक', 'मंसिर', 
-      'पुष', 'माघ', 'फागुन', 'चैत'
+      'बैशाख',
+      'जेठ',
+      'असार',
+      'साउन',
+      'भदौ',
+      'असोज',
+      'कात्तिक',
+      'मंसिर',
+      'पुष',
+      'माघ',
+      'फागुन',
+      'चैत'
     ];
   }
 
@@ -73,14 +82,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final consumptionHistory = authProvider.consumptionHistory;
 
     // Update consumption data from API if available
-    if (consumptionHistory != null && 
-        consumptionHistory.data.isNotEmpty) {
+    if (consumptionHistory != null && consumptionHistory.data.isNotEmpty) {
       _loadConsumptionDataFromAPI(consumptionHistory.data!);
     }
 
     // Calculate values from customer details
     String dueBalance = 'Rs. 0';
-    if (customerDetails != null && customerDetails.readingBill != null && customerDetails.readingBill! > 0) {
+    if (customerDetails != null &&
+        customerDetails.readingBill != null &&
+        customerDetails.readingBill! > 0) {
       dueBalance = 'Rs. ${customerDetails.readingBill.toStringAsFixed(0)}';
     }
 
@@ -89,9 +99,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
       lastPaid = 'Rs. ${customerDetails.lastPayAmount.toStringAsFixed(0)}';
     }
 
-    String avgConsumption = '${customerDetails?.avgConsumption.toStringAsFixed(0) ?? '0'} units';
-    String readingBill = 'Rs. ${customerDetails?.readingBill.toStringAsFixed(0) ?? '0'}';
-    String advance = 'Rs. ${customerDetails?.advance.toStringAsFixed(0) ?? '0'}';
+    String avgConsumption =
+        '${customerDetails?.avgConsumption.toStringAsFixed(0) ?? '0'} units';
+    String readingBill =
+        'Rs. ${customerDetails?.readingBill.toStringAsFixed(0) ?? '0'}';
+    String advance =
+        'Rs. ${customerDetails?.advance.toStringAsFixed(0) ?? '0'}';
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -118,7 +131,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             children: [
               // ✅ Customer Information Card
               if (customerDetails != null)
-                _buildCustomerInfoCard(context, customerDetails, colorScheme, textTheme),
+                _buildCustomerInfoCard(
+                    context, customerDetails, colorScheme, textTheme),
 
               // Stats Row
               Row(
@@ -241,7 +255,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               const SizedBox(height: 16),
 
               // News & Alerts
-              _buildNewsAndAlerts(context, colorScheme, textTheme),
+              // _buildNewsAndAlerts(context, colorScheme, textTheme),
             ],
           ),
         ),
@@ -313,7 +327,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          
+
           // Row 1: Customer Name and ID
           Row(
             children: [
@@ -334,7 +348,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Row 2: Phone and Meter No
           Row(
             children: [
@@ -355,14 +369,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          
+
           // Row 3: Ward and Area
           Row(
             children: [
               _buildCustomerInfoItem(
                 context,
                 'Address :',
-                customerDetails.palika + "," + customerDetails.wardNo.toString(),
+                customerDetails.palika +
+                    "," +
+                    customerDetails.wardNo.toString(),
                 Icons.location_city,
                 Colors.white,
               ),
@@ -385,7 +401,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final isActive = customerDetails?.status?.toLowerCase() == 'active';
     final dueBalance = customerDetails?.readingBill ?? 0.0;
-    
+
     // ✅ Determine if due balance is greater than 0
     final bool hasDueBalance = dueBalance > 0;
 
@@ -472,8 +488,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   //     onPressed: _navigateToPayment,
                   //     style: ElevatedButton.styleFrom(
                   //       backgroundColor: Colors.white,
-                  //       foregroundColor: hasDueBalance 
-                  //           ? colorScheme.error 
+                  //       foregroundColor: hasDueBalance
+                  //           ? colorScheme.error
                   //           : colorScheme.primary,
                   //       padding: const EdgeInsets.symmetric(
                   //         horizontal: 12,
@@ -490,8 +506,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   //       style: TextStyle(
                   //         fontWeight: FontWeight.w600,
                   //         fontSize: 10,
-                  //         color: hasDueBalance 
-                  //             ? colorScheme.error 
+                  //         color: hasDueBalance
+                  //             ? colorScheme.error
                   //             : colorScheme.primary,
                   //       ),
                   //     ),
@@ -501,9 +517,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
           ),
-          
+
           const SizedBox(width: 12),
-          
+
           // Right Card: Status
           Expanded(
             child: Container(
@@ -580,7 +596,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // ✅ Quick Actions
   Widget _buildQuickActions(BuildContext context) {
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -589,7 +605,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           style: textTheme.displaySmall,
         ),
         const SizedBox(height: 12),
-        
+
         // Row 1
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -623,9 +639,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        
+
         const SizedBox(height: 12),
-        
+
         // Row 2
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -636,14 +652,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               onTap: () => _navigateTo('/complaint'),
             ),
             QuickAction(
-              icon: Icons.newspaper,
-              label: 'News',
-              onTap: () => _navigateTo('/notices'),
-            ),
+                icon: Icons.newspaper,
+                label: 'News',
+                onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('News feature coming soon!'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    )),
             QuickAction(
               icon: Icons.payment,
               label: 'Utility Payment',
-              onTap: _navigateToPayment,
+              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Schedule feature coming soon!'),
+                  duration: Duration(seconds: 2),
+                ),
+              ),
             ),
             QuickAction(
               icon: Icons.receipt_long,
@@ -711,8 +736,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // ✅ Customer Info Item Builder
-  Widget _buildCustomerInfoItem(BuildContext context, String label, String value, IconData icon, Color textColor) {
+  Widget _buildCustomerInfoItem(BuildContext context, String label,
+      String value, IconData icon, Color textColor) {
     final textTheme = Theme.of(context).textTheme;
 
     return Flexible(
@@ -760,7 +785,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Handle logout
   Future<void> _handleLogout(BuildContext context) async {
     final authProvider = context.read<AuthProvider>();
-    
+
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -778,7 +803,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ],
       ),
     );
-    
+
     if (confirm == true) {
       await authProvider.logout();
       if (mounted) {
@@ -790,19 +815,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Load consumption data from API
   void _loadConsumptionDataFromAPI(List<ConsumptionData> data) {
     if (data.isEmpty) return;
-    
+
     final List<double> newData = [];
     final List<String> newMonths = [];
-    
+
     final sortedData = List<ConsumptionData>.from(data)
       ..sort((a, b) => a.month.compareTo(b.month));
-    
+
     for (var item in sortedData) {
       newData.add(item.consumption.toDouble());
       String monthLabel = _convertNepaliMonth(item.month);
       newMonths.add(monthLabel);
     }
-    
+
     setState(() {
       _consumptionData = newData;
       _months = newMonths;
@@ -815,13 +840,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final parts = monthStr.split('/');
       if (parts.length == 2) {
         final monthNum = int.parse(parts[1]);
-        
+
         const nepaliMonths = [
-          'बैशाख', 'जेठ', 'असार', 'साउन', 
-          'भदौ', 'असोज', 'कात्तिक', 'मंसिर', 
-          'पुष', 'माघ', 'फागुन', 'चैत'
+          'बैशाख',
+          'जेठ',
+          'असार',
+          'साउन',
+          'भदौ',
+          'असोज',
+          'कात्तिक',
+          'मंसिर',
+          'पुष',
+          'माघ',
+          'फागुन',
+          'चैत'
         ];
-        
+
         if (monthNum >= 1 && monthNum <= 12) {
           return nepaliMonths[monthNum - 1];
         }
@@ -832,7 +866,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
-  Widget _buildNewsCard(BuildContext context, String title, String description, String tag) {
+  Widget _buildNewsCard(
+      BuildContext context, String title, String description, String tag) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
 
@@ -861,7 +896,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               color: colorScheme.surfaceContainerHighest,
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius:
+                  const BorderRadius.vertical(top: Radius.circular(12)),
             ),
             child: Center(
               child: Icon(
@@ -878,18 +914,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
-                    color: tag == 'Maintenance' 
-                        ? colorScheme.tertiaryFixed 
+                    color: tag == 'Maintenance'
+                        ? colorScheme.tertiaryFixed
                         : colorScheme.secondaryContainer,
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
                     tag,
                     style: textTheme.labelLarge?.copyWith(
-                      color: tag == 'Maintenance' 
-                          ? colorScheme.onTertiaryFixedVariant 
+                      color: tag == 'Maintenance'
+                          ? colorScheme.onTertiaryFixedVariant
                           : colorScheme.onSecondaryContainer,
                       fontWeight: FontWeight.w700,
                       fontSize: 10,

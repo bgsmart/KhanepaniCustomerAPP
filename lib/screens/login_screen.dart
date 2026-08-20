@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../config/app_config.dart';
 
@@ -87,25 +88,25 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
       final authProvider = context.read<AuthProvider>();
-      
+
       setState(() => _isLoading = true);
       authProvider.clearError();
-      
+
       try {
         final customerId = int.parse(_customerIdController.text.trim());
         final password = _passwordController.text.trim();
-        
+
         final success = await authProvider.loginWithCustomerSimple(
           customerID: customerId,
           password: password,
         );
-        
+
         if (mounted) {
           setState(() => _isLoading = false);
-          
+
           if (success && authProvider.isAuthenticated) {
             await _saveCredentials(customerId.toString(), password);
-            
+
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
@@ -114,19 +115,21 @@ class _LoginScreenState extends State<LoginScreen> {
                 duration: Duration(seconds: 2),
               ),
             );
-            
+
             Navigator.pushReplacementNamed(context, '/dashboard');
           }
         }
       } on FormatException {
         if (mounted) {
           setState(() => _isLoading = false);
-          _showErrorSnackBar('Invalid Customer ID format. Please enter numbers only.');
+          _showErrorSnackBar(
+              'Invalid Customer ID format. Please enter numbers only.');
         }
       } on Exception catch (e) {
         if (mounted) {
           setState(() => _isLoading = false);
-          _showErrorSnackBar('Login failed: ${e.toString().replaceFirst('Exception: ', '')}');
+          _showErrorSnackBar(
+              'Login failed: ${e.toString().replaceFirst('Exception: ', '')}');
         }
       }
     }
@@ -153,7 +156,7 @@ class _LoginScreenState extends State<LoginScreen> {
       try {
         final customerId = int.parse(_customerIdController.text.trim());
         Navigator.pushNamed(
-          context, 
+          context,
           '/forgot-password',
           arguments: {'customerId': customerId},
         );
@@ -170,22 +173,29 @@ class _LoginScreenState extends State<LoginScreen> {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final authProvider = context.watch<AuthProvider>();
-    
+
     // ✅ Responsive sizing based on screen dimensions
     final screenSize = MediaQuery.of(context).size;
     final isSmallScreen = screenSize.width < 360;
     final isMediumScreen = screenSize.width >= 360 && screenSize.width < 600;
     final isLargeScreen = screenSize.width >= 600 && screenSize.width < 1200;
     final isExtraLargeScreen = screenSize.width >= 1200;
-    
+
     // ✅ Responsive padding and spacing
-    final horizontalPadding = isSmallScreen ? 12.0 : (isMediumScreen ? 20.0 : (isLargeScreen ? 24.0 : 32.0));
+    final horizontalPadding = isSmallScreen
+        ? 12.0
+        : (isMediumScreen ? 20.0 : (isLargeScreen ? 24.0 : 32.0));
     final verticalPadding = isSmallScreen ? 16.0 : 20.0;
     final cardPadding = isSmallScreen ? 16.0 : (isMediumScreen ? 20.0 : 24.0);
-    final logoSize = isSmallScreen ? 60.0 : (isMediumScreen ? 80.0 : (isLargeScreen ? 100.0 : 120.0));
-    final fontSizeMultiplier = isSmallScreen ? 0.85 : (isMediumScreen ? 1.0 : (isLargeScreen ? 1.1 : 1.2));
+    final logoSize = isSmallScreen
+        ? 60.0
+        : (isMediumScreen ? 80.0 : (isLargeScreen ? 100.0 : 120.0));
+    final fontSizeMultiplier = isSmallScreen
+        ? 0.85
+        : (isMediumScreen ? 1.0 : (isLargeScreen ? 1.1 : 1.2));
     final buttonHeight = isSmallScreen ? 48.0 : (isMediumScreen ? 52.0 : 56.0);
-    final maxWidth = isExtraLargeScreen ? 400.0 : (isLargeScreen ? 500.0 : double.infinity);
+    final maxWidth =
+        isExtraLargeScreen ? 400.0 : (isLargeScreen ? 500.0 : double.infinity);
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -207,13 +217,14 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Company Logo
                   _buildLogo(colorScheme, logoSize),
                   SizedBox(height: screenSize.height * 0.02),
-                  
+
                   // Company Name
                   _buildCompanyName(textTheme, colorScheme, fontSizeMultiplier),
                   SizedBox(height: screenSize.height * 0.005),
-                  
+
                   // Company Address
-                  _buildCompanyAddress(textTheme, colorScheme, fontSizeMultiplier),
+                  _buildCompanyAddress(
+                      textTheme, colorScheme, fontSizeMultiplier),
                   SizedBox(height: screenSize.height * 0.03),
 
                   // Error Message Display
@@ -222,8 +233,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Login Card
                   _buildLoginCard(
-                    colorScheme, 
-                    textTheme, 
+                    colorScheme,
+                    textTheme,
                     authProvider,
                     cardPadding,
                     fontSizeMultiplier,
@@ -295,7 +306,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildCompanyName(
-    TextTheme textTheme, 
+    TextTheme textTheme,
     ColorScheme colorScheme,
     double fontSizeMultiplier,
   ) {
@@ -313,7 +324,7 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildCompanyAddress(
-    TextTheme textTheme, 
+    TextTheme textTheme,
     ColorScheme colorScheme,
     double fontSizeMultiplier,
   ) {
@@ -401,8 +412,8 @@ class _LoginScreenState extends State<LoginScreen> {
             children: [
               // Customer ID
               _buildCustomerIdField(
-                textTheme, 
-                colorScheme, 
+                textTheme,
+                colorScheme,
                 authProvider,
                 fontSizeMultiplier,
                 isSmallScreen,
@@ -411,8 +422,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Password
               _buildPasswordField(
-                textTheme, 
-                colorScheme, 
+                textTheme,
+                colorScheme,
                 authProvider,
                 fontSizeMultiplier,
                 isSmallScreen,
@@ -421,17 +432,30 @@ class _LoginScreenState extends State<LoginScreen> {
 
               // Remember Me
               _buildRememberMeCheckbox(
-                textTheme, 
-                colorScheme, 
+                textTheme,
+                colorScheme,
                 authProvider,
                 fontSizeMultiplier,
                 isSmallScreen,
               ),
+              const SizedBox(
+                height: 10,
+              ),
+              InkWell(
+                onTap: () {
+                  launchUrlLink("https://sites.google.com/view/privacypolicyhetaudakhanepani/home");
+                },
+                child: const Text(
+                  'I here by declare to accept the given policies.',
+                  style: TextStyle(color: Colors.black),
+                  textScaler: TextScaler.linear(1),
+                ),
+              ),
+              // Login Button
               SizedBox(height: isSmallScreen ? 16 : 24),
 
-              // Login Button
               _buildLoginButton(
-                colorScheme, 
+                colorScheme,
                 authProvider,
                 buttonHeight,
                 fontSizeMultiplier,
@@ -442,6 +466,19 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> launchUrlLink(String url) async {
+    final Uri uri = Uri.parse(url);
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(
+        uri,
+        mode: LaunchMode.externalApplication,
+      );
+    } else {
+      throw Exception('Could not launch $url');
+    }
   }
 
   Widget _buildCustomerIdField(
@@ -550,8 +587,8 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
             ),
             TextButton(
-              onPressed: authProvider.isLoading || _isLoading 
-                  ? null 
+              onPressed: authProvider.isLoading || _isLoading
+                  ? null
                   : _handleForgotPassword,
               style: TextButton.styleFrom(
                 padding: EdgeInsets.symmetric(
@@ -585,9 +622,7 @@ class _LoginScreenState extends State<LoginScreen> {
             ),
             suffixIcon: IconButton(
               icon: Icon(
-                _obscurePassword
-                    ? Icons.visibility
-                    : Icons.visibility_off,
+                _obscurePassword ? Icons.visibility : Icons.visibility_off,
                 size: isSmallScreen ? 20 : 24,
               ),
               onPressed: () {
@@ -698,13 +733,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   Widget _buildLoginButton(
-    ColorScheme colorScheme, 
+    ColorScheme colorScheme,
     AuthProvider authProvider,
     double buttonHeight,
     double fontSizeMultiplier,
   ) {
     final isLoading = authProvider.isLoading || _isLoading;
-    
+
     return SizedBox(
       width: double.infinity,
       height: buttonHeight,
@@ -720,7 +755,7 @@ class _LoginScreenState extends State<LoginScreen> {
           shadowColor: colorScheme.primary.withOpacity(0.3),
         ),
         child: isLoading
-            ? SizedBox(
+            ? const SizedBox(
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
@@ -741,140 +776,140 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // ✅ FIXED: Info Cards with proper overflow handling
   // ✅ FIXED: Info Cards in same row for all devices
-Widget _buildInfoCards(
-  ColorScheme colorScheme, 
-  TextTheme textTheme,
-  bool isSmallScreen,
-) {
-  return Row(
-    children: [
-      Expanded(
-        child: Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: colorScheme.outlineVariant.withOpacity(0.3),
+  Widget _buildInfoCards(
+    ColorScheme colorScheme,
+    TextTheme textTheme,
+    bool isSmallScreen,
+  ) {
+    return Row(
+      children: [
+        Expanded(
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: colorScheme.outlineVariant.withOpacity(0.3),
+              ),
             ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.secondaryContainer.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.secondaryContainer.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.verified,
+                      color: const Color(0xFF006E28),
+                      size: isSmallScreen ? 16 : 20,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.verified,
-                    color: const Color(0xFF006E28),
-                    size: isSmallScreen ? 16 : 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'SECURITY',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: isSmallScreen ? 8 : 10,
-                          fontWeight: FontWeight.w600,
-                          height: 1.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Flexible(
-                        child: Text(
-                          'SSL Encrypted',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'SECURITY',
                           style: textTheme.labelLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: isSmallScreen ? 8 : 10,
                             fontWeight: FontWeight.w600,
-                            fontSize: isSmallScreen ? 11 : 14,
                             height: 1.2,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                        Flexible(
+                          child: Text(
+                            'SSL Encrypted',
+                            style: textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 11 : 14,
+                              height: 1.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-      const SizedBox(width: 8),
-      Expanded(
-        child: Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
-            side: BorderSide(
-              color: colorScheme.outlineVariant.withOpacity(0.3),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Card(
+            elevation: 0,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+              side: BorderSide(
+                color: colorScheme.outlineVariant.withOpacity(0.3),
+              ),
             ),
-          ),
-          child: Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
-            child: Row(
-              children: [
-                Container(
-                  padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
-                  decoration: BoxDecoration(
-                    color: colorScheme.tertiaryContainer.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: EdgeInsets.all(isSmallScreen ? 8 : 12),
+              child: Row(
+                children: [
+                  Container(
+                    padding: EdgeInsets.all(isSmallScreen ? 6 : 8),
+                    decoration: BoxDecoration(
+                      color: colorScheme.tertiaryContainer.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      Icons.support_agent,
+                      color: const Color(0xFF4C4ACA),
+                      size: isSmallScreen ? 16 : 20,
+                    ),
                   ),
-                  child: Icon(
-                    Icons.support_agent,
-                    color: const Color(0xFF4C4ACA),
-                    size: isSmallScreen ? 16 : 20,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'ASSISTANCE',
-                        style: textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onSurfaceVariant,
-                          fontSize: isSmallScreen ? 8 : 10,
-                          fontWeight: FontWeight.w600,
-                          height: 1.2,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      Flexible(
-                        child: Text(
-                          '24/7 Support',
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'ASSISTANCE',
                           style: textTheme.labelLarge?.copyWith(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: isSmallScreen ? 8 : 10,
                             fontWeight: FontWeight.w600,
-                            fontSize: isSmallScreen ? 11 : 14,
                             height: 1.2,
                           ),
                           overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                        Flexible(
+                          child: Text(
+                            '24/7 Support',
+                            style: textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w600,
+                              fontSize: isSmallScreen ? 11 : 14,
+                              height: 1.2,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    ],
-  );
-}
+      ],
+    );
+  }
 
   Widget _buildPoweredBy(
-    TextTheme textTheme, 
+    TextTheme textTheme,
     ColorScheme colorScheme,
     double fontSizeMultiplier,
   ) {
