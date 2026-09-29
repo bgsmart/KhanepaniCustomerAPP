@@ -26,7 +26,7 @@ class _PaymentBudgetCardState extends State<PaymentBudgetCard> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => const PaymentScreen(),
+            builder: (context) => const PaymentScreen(paymentTopic: "Pending",),
           ),
         );
       }

@@ -11,7 +11,8 @@ import '../services/esewa_intent_service.dart';
 import '../config/esewa_config.dart';
 
 class PaymentScreen extends StatefulWidget {
-  const PaymentScreen({super.key});
+  final String paymentTopic;
+  const PaymentScreen({super.key, required this.paymentTopic});
 
   @override
   State<PaymentScreen> createState() => _PaymentScreenState();
@@ -21,6 +22,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
   bool _isInitialized = false;
   bool _isProcessing = false;
   final ScrollController _scrollController = ScrollController();
+  final remarksController = TextEditingController();
 
   @override
   void initState() {
@@ -33,15 +35,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    remarksController.dispose();
     super.dispose();
   }
 
   Future<void> _loadPaymentTopics() async {
     final authProvider = context.read<AuthProvider>();
     final paymentProvider = context.read<PaymentProvider>();
-    
+
     if (authProvider.authToken != null) {
-      final success = await paymentProvider.fetchTopics(authProvider.authToken!);
+      final success =
+          await paymentProvider.fetchTopics(authProvider.authToken!);
       if (success && mounted) {
         setState(() => _isInitialized = true);
       }
@@ -68,6 +72,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
       builder: (context) => PaymentSummaryBottomSheet(
         selectedTopics: paymentProvider.selectedTopics,
         totalAmount: paymentProvider.totalAmount,
+        remarksController: remarksController,
         onConfirm: _processPaymentWithEsewaIntent,
       ),
     );
@@ -76,16 +81,17 @@ class _PaymentScreenState extends State<PaymentScreen> {
   // ✅ Process payment with eSewa Intent
   Future<void> _processPaymentWithEsewaIntent() async {
     if (_isProcessing) return;
-    
+
     final authProvider = context.read<AuthProvider>();
     final paymentProvider = context.read<PaymentProvider>();
 
     String customerId = '0';
-    
+
     if (authProvider.customerDetails != null) {
       customerId = authProvider.customerDetails!.cusID ?? '0';
+      print('customer id : $customerId');
     }
-    
+
     if (customerId == '0' || customerId.isEmpty) {
       if (authProvider.currentUser != null) {
         customerId = authProvider.currentUser!.customerId ?? '0';
@@ -111,39 +117,53 @@ class _PaymentScreenState extends State<PaymentScreen> {
       // ✅ Generate unique transaction UUID
       final transactionUuid = 'txn-${DateTime.now().millisecondsSinceEpoch}';
       final amount = paymentProvider.totalAmount.toStringAsFixed(0);
-      
+      final selectedSns = paymentProvider.selectedTopics
+          .map((topic) => topic.sn.toString())
+          .join(',');
+
+      print('📋 Selected SNs: $selectedSns');
+
       // ✅ Prepare properties
       final properties = {
         'customer_id': customerId,
-        'remarks': 'Water Bill Payment - ${paymentProvider.selectedCount} items',
+        'remarks':
+            'Water Bill Payment - ${paymentProvider.selectedCount} items',
       };
 
       print('📝 Processing eSewa Intent Payment:');
       print('👤 Customer ID: $customerId');
       print('💰 Total Amount: $amount');
       print('📋 Transaction UUID: $transactionUuid');
-
+      print('remarks text : ${remarksController.text}');
+      print('payment topic : ${widget.paymentTopic}');
       // ✅ Step 1: Book Payment
-      final bookingResult = await EsewaIntentService.bookPayment(
-        amount: amount,
-        transactionUuid: transactionUuid,
-        callbackUrl: EsewaConfigConstants.callbackUrl,
-        redirectUrl: EsewaConfigConstants.redirectUrl,
-        properties: properties,
-      );
+      final bookingResult = await AuthProvider.paymentMethod(
+          amount,
+          'khanepani-local-001',
+          customerId,
+          remarksController.text,
+          selectedSns,
+          widget.paymentTopic);
+      // final bookingResult = await EsewaIntentService.bookPayment(
+      //   amount: amount,
+      //   transactionUuid: transactionUuid,
+      //   callbackUrl: EsewaConfigConstants.callbackUrl,
+      //   redirectUrl: EsewaConfigConstants.redirectUrl,
+      //   properties: properties,
+      // );
 
-      if (!bookingResult['success']) {
-        throw Exception(bookingResult['message'] ?? 'Booking failed');
+      if (bookingResult!.success == false) {
+        throw Exception(bookingResult.message ?? 'Booking failed');
       }
 
-      final bookingData = bookingResult['data'];
-      final deeplink = bookingData['deeplink'];
-      final bookingId = bookingData['booking_id'];
-      final correlationId = bookingData['correlation_id'];
+      // final bookingData = bookingResult['data'];
+      // final deeplink = bookingData['deeplink'];
+      // final bookingId = bookingData['booking_id'];
+      // final correlationId = bookingData['correlation_id'];
 
       print('✅ Booking Successful:');
-      print('📝 Booking ID: $bookingId');
-      print('🔗 Deeplink: $deeplink');
+      print('📝 esewa deeplink: ${bookingResult.deeplink}');
+      // print('🔗 Deeplink: $deeplink');
 
       // ✅ Store booking info for status check
       // You can store this in SharedPreferences or a global state
@@ -151,13 +171,12 @@ class _PaymentScreenState extends State<PaymentScreen> {
 
       // ✅ Step 2: Launch eSewa app via deeplink
       final launched = await launchUrl(
-        Uri.parse(deeplink),
+        Uri.parse(bookingResult.deeplink ?? ''),
         mode: LaunchMode.externalApplication,
       );
 
       if (!launched) {
-        // ✅ Fallback: Open in browser
-        final webUrl = 'https://rc.esewa.com.np/pay/$bookingId';
+        final webUrl = bookingResult.deeplink ?? '';
         await launchUrl(
           Uri.parse(webUrl),
           mode: LaunchMode.platformDefault,
@@ -172,13 +191,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('✅ Payment initiated! Please complete payment in eSewa app.'),
+            content: Text(
+                '✅ Payment initiated! Please complete payment in eSewa app.'),
             backgroundColor: Colors.green,
             duration: Duration(seconds: 3),
           ),
         );
       }
-
     } catch (e) {
       print('❌ eSewa Intent Payment Error: $e');
       if (mounted) {
@@ -209,9 +228,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
       if (result['success']) {
         final data = result['data'];
         final status = data['status'];
-        
+
         print('📊 Payment Status: $status');
-        
+
         if (status == 'SUCCESS') {
           // Handle success
         } else if (status == 'FAILED' || status == 'CANCELED') {
@@ -229,10 +248,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final textTheme = Theme.of(context).textTheme;
     final paymentProvider = context.watch<PaymentProvider>();
     final authProvider = context.watch<AuthProvider>();
-    
-    final customerName = authProvider.customerDetails?.name ?? 
-                        authProvider.currentUser?.name ?? 
-                        'Customer';
+
+    final customerName = authProvider.customerDetails?.name ??
+        authProvider.currentUser?.name ??
+        'Customer';
 
     return Scaffold(
       backgroundColor: colorScheme.background,
@@ -274,7 +293,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         elevation: 0,
         automaticallyImplyLeading: true,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: const Icon(
+            Icons.arrow_back,
+            color: Colors.white,
+          ),
           onPressed: () => Navigator.pop(context),
           tooltip: 'Back',
         ),
@@ -282,9 +304,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
           if (paymentProvider.topics.isNotEmpty) ...[
             IconButton(
               icon: const Icon(Icons.select_all),
-              onPressed: paymentProvider.selectedCount == paymentProvider.topics.length
-                  ? null
-                  : paymentProvider.selectAll,
+              onPressed:
+                  paymentProvider.selectedCount == paymentProvider.topics.length
+                      ? null
+                      : paymentProvider.selectAll,
               tooltip: 'Select All',
             ),
             IconButton(
@@ -401,10 +424,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
     ColorScheme colorScheme,
     PaymentProvider paymentProvider,
   ) {
-    final isEnabled = paymentProvider.selectedCount > 0 && 
-                      !paymentProvider.isLoading &&
-                      !paymentProvider.isProcessing &&
-                      !_isProcessing;
+    final isEnabled = paymentProvider.selectedCount > 0 &&
+        !paymentProvider.isLoading &&
+        !paymentProvider.isProcessing &&
+        !_isProcessing;
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -480,17 +503,15 @@ class _PaymentScreenState extends State<PaymentScreen> {
                         )
                       : const Icon(Icons.payment),
                   label: Text(
-                    _isProcessing 
-                        ? 'Processing...' 
-                        : 'Pay with eSewa',
-                    style: TextStyle(
+                    _isProcessing ? 'Processing...' : 'Pay with eSewa',
+                    style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: isEnabled 
-                        ? colorScheme.primary 
+                    backgroundColor: isEnabled
+                        ? colorScheme.primary
                         : colorScheme.onSurfaceVariant,
                     foregroundColor: colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(

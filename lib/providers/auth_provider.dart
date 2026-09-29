@@ -1,4 +1,5 @@
 // lib/providers/auth_provider.dart
+import 'package:KhanepaniApp/models/UtilityPayementModelResponse.dart';
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
@@ -38,14 +39,15 @@ class AuthProvider extends ChangeNotifier {
     try {
       final token = await SecureStorageService.getToken();
       final customerId = await SecureStorageService.getCustomerId();
-      
+
       if (token != null && customerId != null) {
         _authToken = token;
         ApiService.setToken(token);
-        
+
         // Try to restore customer details
         try {
-          final details = await ApiService.getCustomerInfo(int.parse(customerId));
+          final details =
+              await ApiService.getCustomerInfo(int.parse(customerId));
           _customerDetails = details;
           _currentUser = User(
             id: details.cusID,
@@ -54,10 +56,11 @@ class AuthProvider extends ChangeNotifier {
             customerId: details.cusID,
           );
           _isAuthenticated = true;
-          
+
           // Get consumption history
           try {
-            final history = await ApiService.getConsumptionHistory(int.parse(customerId));
+            final history =
+                await ApiService.getConsumptionHistory(int.parse(customerId));
             _consumptionHistory = history;
           } catch (e) {
             print('Error loading consumption history: $e');
@@ -68,7 +71,7 @@ class AuthProvider extends ChangeNotifier {
               customerID: int.parse(customerId),
             );
           }
-          
+
           notifyListeners();
         } catch (e) {
           // If token is invalid, clear it
@@ -99,10 +102,10 @@ class AuthProvider extends ChangeNotifier {
       final loginResponse = await ApiService.login(username, password);
       _authToken = loginResponse.token;
       ApiService.setToken(_authToken!);
-      
+
       // Save token to secure storage
       await SecureStorageService.saveToken(_authToken!);
-      
+
       _isAuthenticated = true;
       _isLoading = false;
       notifyListeners();
@@ -146,7 +149,8 @@ class AuthProvider extends ChangeNotifier {
 
         // Get consumption history
         try {
-          final history = await ApiService.getConsumptionHistory(validation.customerID);
+          final history =
+              await ApiService.getConsumptionHistory(validation.customerID);
           _consumptionHistory = history;
         } catch (e) {
           print('Error loading consumption history: $e');
@@ -174,8 +178,8 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = validation.responseMessage.isNotEmpty 
-            ? validation.responseMessage 
+        _errorMessage = validation.responseMessage.isNotEmpty
+            ? validation.responseMessage
             : 'Invalid Customer ID or Password';
         _isAuthenticated = false;
         _isLoading = false;
@@ -185,9 +189,10 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (e) {
       String errorMsg = 'Login failed. Please try again.';
       final errorStr = e.toString();
-      
+
       if (errorStr.contains('401')) {
-        errorMsg = 'Invalid credentials. Please check your Customer ID and Password.';
+        errorMsg =
+            'Invalid credentials. Please check your Customer ID and Password.';
         await SecureStorageService.clearAll();
         _authToken = null;
         ApiService.setToken(null);
@@ -195,12 +200,13 @@ class AuthProvider extends ChangeNotifier {
         errorMsg = 'Customer not found. Please check your Customer ID.';
       } else if (errorStr.contains('500')) {
         errorMsg = 'Server error. Please try again later.';
-      } else if (errorStr.contains('timeout') || errorStr.contains('Failed to connect')) {
+      } else if (errorStr.contains('timeout') ||
+          errorStr.contains('Failed to connect')) {
         errorMsg = 'Connection error. Please check your internet connection.';
       } else {
         errorMsg = errorStr.replaceFirst('Exception: ', '');
       }
-      
+
       _errorMessage = errorMsg;
       _isAuthenticated = false;
       _isLoading = false;
@@ -247,24 +253,49 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (e) {
       String errorMsg = 'Failed to change password. Please try again.';
       final errorStr = e.toString();
-      
+
       if (errorStr.contains('401')) {
         errorMsg = 'Current password is incorrect or session expired.';
         await SecureStorageService.clearAll();
         _authToken = null;
         ApiService.setToken(null);
       } else if (errorStr.contains('404')) {
-        errorMsg = 'Password change endpoint not found. Please contact support.';
+        errorMsg =
+            'Password change endpoint not found. Please contact support.';
       } else if (errorStr.contains('500')) {
         errorMsg = 'Server error. Please try again later.';
       } else {
         errorMsg = errorStr.replaceFirst('Exception: ', '');
       }
-      
+
       _errorMessage = errorMsg;
       _isLoading = false;
       notifyListeners();
       return false;
+    }
+  }
+
+  static Future<UtilityPayementModelResponse?> paymentMethod(
+      String amount,
+      String transactionUUID,
+      String custonerID,
+      String remarks,
+      String counterCode,
+      String customerCode) async {
+    // _isLoading = true;
+    // _errorMessage = null;
+    // notifyListeners();
+    try {
+      final paymentResponse = await ApiService.globalPayment(amount,
+          transactionUUID, custonerID, remarks, counterCode, customerCode);
+      // _isLoading = false;
+      // notifyListeners();
+      return paymentResponse;
+    } catch (e) {
+      // _errorMessage = 'Failed to authenticate: ${e.toString()}';
+      // _isLoading = false;
+      // notifyListeners();
+      rethrow;
     }
   }
 
@@ -308,20 +339,21 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (e) {
       String errorMsg = 'Failed to update password. Please try again.';
       final errorStr = e.toString();
-      
+
       if (errorStr.contains('401')) {
         errorMsg = 'Old password is incorrect or session expired.';
         await SecureStorageService.clearAll();
         _authToken = null;
         ApiService.setToken(null);
       } else if (errorStr.contains('404')) {
-        errorMsg = 'Password update endpoint not found. Please contact support.';
+        errorMsg =
+            'Password update endpoint not found. Please contact support.';
       } else if (errorStr.contains('500')) {
         errorMsg = 'Server error. Please try again later.';
       } else {
         errorMsg = errorStr.replaceFirst('Exception: ', '');
       }
-      
+
       _errorMessage = errorMsg;
       _isLoading = false;
       notifyListeners();
@@ -370,7 +402,7 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (e) {
       String errorMsg = 'Failed to reset password. Please try again.';
       final errorStr = e.toString();
-      
+
       if (errorStr.contains('401')) {
         errorMsg = 'Session expired. Please login again.';
         await SecureStorageService.clearAll();
@@ -379,15 +411,17 @@ class AuthProvider extends ChangeNotifier {
       } else if (errorStr.contains('404')) {
         errorMsg = 'API endpoint not found. Please contact support.';
       } else if (errorStr.contains('409')) {
-        errorMsg = 'Customer ID or mobile number not found. Please check your details.';
+        errorMsg =
+            'Customer ID or mobile number not found. Please check your details.';
       } else if (errorStr.contains('500')) {
         errorMsg = 'Server error. Please try again later.';
-      } else if (errorStr.contains('timeout') || errorStr.contains('Failed to connect')) {
+      } else if (errorStr.contains('timeout') ||
+          errorStr.contains('Failed to connect')) {
         errorMsg = 'Connection error. Please check your internet connection.';
       } else {
         errorMsg = errorStr.replaceFirst('Exception: ', '');
       }
-      
+
       _errorMessage = errorMsg;
       _isLoading = false;
       notifyListeners();
@@ -409,6 +443,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final loginResponse = await ApiService.login(username, password);
       _authToken = loginResponse.token;
+      print("user token :$_authToken");
       ApiService.setToken(_authToken!);
       await SecureStorageService.saveToken(_authToken!);
 
@@ -422,7 +457,8 @@ class AuthProvider extends ChangeNotifier {
         _customerDetails = details;
 
         try {
-          final history = await ApiService.getConsumptionHistory(validation.customerID);
+          final history =
+              await ApiService.getConsumptionHistory(validation.customerID);
           _consumptionHistory = history;
         } catch (e) {
           print('Error loading consumption history: $e');
@@ -448,8 +484,8 @@ class AuthProvider extends ChangeNotifier {
         notifyListeners();
         return true;
       } else {
-        _errorMessage = validation.responseMessage.isNotEmpty 
-            ? validation.responseMessage 
+        _errorMessage = validation.responseMessage.isNotEmpty
+            ? validation.responseMessage
             : 'Invalid Customer ID or Password';
         _isAuthenticated = false;
         _isLoading = false;
@@ -459,9 +495,10 @@ class AuthProvider extends ChangeNotifier {
     } on Exception catch (e) {
       String errorMsg = 'Login failed. Please try again.';
       final errorStr = e.toString();
-      
+
       if (errorStr.contains('401')) {
-        errorMsg = 'Invalid admin credentials. Please check your username and password.';
+        errorMsg =
+            'Invalid admin credentials. Please check your username and password.';
         await SecureStorageService.clearAll();
         _authToken = null;
         ApiService.setToken(null);
@@ -469,12 +506,13 @@ class AuthProvider extends ChangeNotifier {
         errorMsg = 'Customer not found. Please check your Customer ID.';
       } else if (errorStr.contains('500')) {
         errorMsg = 'Server error. Please try again later.';
-      } else if (errorStr.contains('timeout') || errorStr.contains('Failed to connect')) {
+      } else if (errorStr.contains('timeout') ||
+          errorStr.contains('Failed to connect')) {
         errorMsg = 'Connection error. Please check your internet connection.';
       } else {
         errorMsg = errorStr.replaceFirst('Exception: ', '');
       }
-      
+
       _errorMessage = errorMsg;
       _isAuthenticated = false;
       _isLoading = false;
@@ -505,7 +543,7 @@ class AuthProvider extends ChangeNotifier {
           throw Exception('Failed to refresh token');
         }
       }
-      
+
       final details = await ApiService.getCustomerInfo(customerID);
       _customerDetails = details;
 
@@ -551,7 +589,7 @@ class AuthProvider extends ChangeNotifier {
     try {
       final token = await SecureStorageService.getToken();
       final customerId = await SecureStorageService.getCustomerId();
-      
+
       if (token != null && customerId != null) {
         _authToken = token;
         ApiService.setToken(token);
@@ -571,5 +609,4 @@ class AuthProvider extends ChangeNotifier {
     ApiService.setBaseUrl(baseUrl);
     ApiService.setTenantId(tenantId);
   }
-
 }

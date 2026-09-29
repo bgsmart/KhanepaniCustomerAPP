@@ -7,7 +7,7 @@ import 'package:KhanepaniApp/screens/reading_history_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
-import 'screens/login_screen.dart';
+import 'screens/login_screen/login_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/notices_screen.dart';
 import 'screens/about_screen.dart';
@@ -55,7 +55,7 @@ class AquaFlowApp extends StatelessWidget {
           '/reading-history': (context) => const ReadingHistoryScreen(),
           '/complaint': (context) => const ComplaintScreen(),
           '/complain': (context) => const ComplaintScreen(),
-          '/payment': (context) => const PaymentScreen(),
+          '/payment': (context) => const PaymentScreen(paymentTopic: '',),
         },
         onUnknownRoute: (settings) {
           return MaterialPageRoute(

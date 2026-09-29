@@ -1,5 +1,6 @@
 // lib/services/api_service.dart
 import 'dart:convert';
+import 'package:KhanepaniApp/models/UtilityPayementModelResponse.dart';
 import 'package:KhanepaniApp/models/complaint.dart';
 import 'package:KhanepaniApp/models/reading_history.dart';
 import 'package:http/http.dart' as http;
@@ -43,22 +44,22 @@ class ApiService {
       'accept': '*/*',
       'Content-Type': isMultipart ? 'multipart/form-data' : 'application/json',
     };
-    
+
     if (_authToken != null && _authToken!.isNotEmpty) {
       headers['Authorization'] = 'Bearer $_authToken';
     }
-    
+
     return headers;
   }
 
   // ============ Authentication APIs ============
-  
+
   // Login API - Get Token
   static Future<LoginResponse> login(String username, String password) async {
     try {
       final url = Uri.parse('$baseUrl/api/Auth/login');
       print('🔐 Login URL: $url');
-      
+
       final response = await http.post(
         url,
         headers: _getHeaders(),
@@ -74,11 +75,53 @@ class ApiService {
         final data = jsonDecode(response.body);
         return LoginResponse.fromJson(data);
       } else {
-        throw Exception('Login failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Login failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Login Error: $e');
       throw Exception('Network error: $e');
+    }
+  }
+
+  static Future<UtilityPayementModelResponse> globalPayment(
+      String amount,
+      String transactionUUID,
+      String custonerID,
+      String remarks,
+      String counterCode,
+      String customerCode) async {
+    try {
+      final url = Uri.parse(
+          'https://test.ismart.devanasoft.com.np/api/special-esewa-khanepani/initialize');
+      print("payment url:$url");
+      final paymentResponse = await http.post(url,
+          headers: {
+            "Authorization": "Bearer 11c1e25b-4303-4a7c-999c-fd34ba03866b",
+            "Content-Type": "application/json"
+          },
+          body: jsonEncode({
+            "amount": amount,
+            "transaction_uuid": transactionUUID,
+            "customer_id": custonerID,
+            "remarks": remarks,
+            "properties": {
+              "counter": counterCode,
+              "customer_code": customerCode
+            }
+          }));
+      print('payment response status :${paymentResponse.statusCode}');
+
+      if (paymentResponse.statusCode == 200) {
+        final paymnetModel = jsonDecode(paymentResponse.body);
+        return UtilityPayementModelResponse.fromJson(paymnetModel);
+      } else {
+        throw Exception(
+            "Payment failed :${paymentResponse.statusCode} - ${paymentResponse.body}");
+      }
+    } catch (e) {
+      print('payment exception :$e');
+      throw Exception("Payment error :$e");
     }
   }
 
@@ -91,7 +134,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/Auth/verify-token');
       print('🔍 Verify Token URL: $url');
-      
+
       final response = await http.get(
         url,
         headers: _getHeaders(),
@@ -112,7 +155,7 @@ class ApiService {
   }
 
   // ============ Password Management APIs ============
-  
+
   // Change Password (Primary)
   static Future<Map<String, dynamic>> changePassword({
     required String currentPassword,
@@ -125,7 +168,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/Auth/change-password');
       print('🔑 Change Password URL: $url');
-      
+
       final requestBody = {
         'tenantId': tenantId,
         'currentPassword': currentPassword,
@@ -154,13 +197,17 @@ class ApiService {
         final message = data['message'] ?? data['error'] ?? 'Invalid request';
         throw Exception('Bad Request: $message');
       } else if (response.statusCode == 401) {
-        throw Exception('Unauthorized: Invalid current password or token expired');
+        throw Exception(
+            'Unauthorized: Invalid current password or token expired');
       } else if (response.statusCode == 404) {
-        throw Exception('API endpoint not found: $baseUrl/api/Auth/change-password');
+        throw Exception(
+            'API endpoint not found: $baseUrl/api/Auth/change-password');
       } else if (response.statusCode >= 500) {
-        throw Exception('Server error: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Server error: ${response.statusCode} - ${response.body}');
       } else {
-        throw Exception('Password change failed: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Password change failed: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Change Password Error: $e');
@@ -181,7 +228,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/MeterReading/UpdatePassword');
       print('🔄 Update Password URL: $url');
-      
+
       final requestBody = {
         'clientCODE': tenantId,
         'customerID': customerID,
@@ -213,11 +260,14 @@ class ApiService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized: Invalid old password or token expired');
       } else if (response.statusCode == 404) {
-        throw Exception('API endpoint not found: $baseUrl/api/MeterReading/UpdatePassword');
+        throw Exception(
+            'API endpoint not found: $baseUrl/api/MeterReading/UpdatePassword');
       } else if (response.statusCode >= 500) {
-        throw Exception('Server error: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Server error: ${response.statusCode} - ${response.body}');
       } else {
-        throw Exception('Failed to update password: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to update password: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Update Password Error: $e');
@@ -238,7 +288,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/MeterReading/ForgotPassword');
       print('🔐 Forgot Password URL: $url');
-      
+
       final requestBody = {
         'clientCODE': tenantId,
         'customerID': customerID,
@@ -270,13 +320,17 @@ class ApiService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized: Token may have expired');
       } else if (response.statusCode == 404) {
-        throw Exception('API endpoint not found: $baseUrl/api/MeterReading/ForgotPassword');
+        throw Exception(
+            'API endpoint not found: $baseUrl/api/MeterReading/ForgotPassword');
       } else if (response.statusCode == 409) {
-        throw Exception('Customer ID or mobile number not found. Please check your details.');
+        throw Exception(
+            'Customer ID or mobile number not found. Please check your details.');
       } else if (response.statusCode >= 500) {
-        throw Exception('Server error: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Server error: ${response.statusCode} - ${response.body}');
       } else {
-        throw Exception('Failed to reset password: ${response.statusCode} - ${response.body}');
+        throw Exception(
+            'Failed to reset password: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       print('❌ Forgot Password Error: $e');
@@ -285,7 +339,7 @@ class ApiService {
   }
 
   // ============ Customer APIs ============
-  
+
   // Validate Customer
   static Future<CustomerValidation> validateCustomer({
     required int customerID,
@@ -296,9 +350,10 @@ class ApiService {
     }
 
     try {
-      final url = Uri.parse('$baseUrl/api/MeterReading/isValidCustomer?ClientCODE=$tenantId');
+      final url = Uri.parse(
+          '$baseUrl/api/MeterReading/isValidCustomer?ClientCODE=$tenantId');
       print('🔍 Validate Customer URL: $url');
-      
+
       final response = await http.post(
         url,
         headers: _getHeaders(),
@@ -331,9 +386,10 @@ class ApiService {
     }
 
     try {
-      final url = Uri.parse('$baseUrl/api/MeterReading/GetCustomerInfo?ClientCODE=$tenantId&CustomerID=$customerID');
+      final url = Uri.parse(
+          '$baseUrl/api/MeterReading/GetCustomerInfo?ClientCODE=$tenantId&CustomerID=$customerID');
       print('👤 Get Customer Info URL: $url');
-      
+
       final response = await http.get(
         url,
         headers: _getHeaders(),
@@ -354,9 +410,10 @@ class ApiService {
   }
 
   // ============ History APIs ============
-  
+
   // Get Consumption History
-  static Future<ConsumptionHistoryResponse> getConsumptionHistory(int customerID) async {
+  static Future<ConsumptionHistoryResponse> getConsumptionHistory(
+      int customerID) async {
     if (_authToken == null || _authToken!.isEmpty) {
       throw Exception('No auth token available. Please login first.');
     }
@@ -364,7 +421,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/MeterReading/GetConsumptionHistory');
       print('📊 Get Consumption History URL: $url');
-      
+
       final response = await http.post(
         url,
         headers: _getHeaders(),
@@ -374,13 +431,15 @@ class ApiService {
         }),
       );
 
-      print('📡 Get Consumption History Response Status: ${response.statusCode}');
+      print(
+          '📡 Get Consumption History Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return ConsumptionHistoryResponse.fromJson(data);
       } else {
-        throw Exception('Failed to get consumption history: ${response.statusCode}');
+        throw Exception(
+            'Failed to get consumption history: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Get Consumption History Error: $e');
@@ -423,9 +482,11 @@ class ApiService {
       } else if (response.statusCode == 401) {
         throw Exception('Unauthorized: Token may have expired');
       } else if (response.statusCode == 404) {
-        throw Exception('API endpoint not found: $baseUrl/api/MeterReading/GetReadingHistory');
+        throw Exception(
+            'API endpoint not found: $baseUrl/api/MeterReading/GetReadingHistory');
       } else {
-        throw Exception('Failed to get reading history: ${response.statusCode}');
+        throw Exception(
+            'Failed to get reading history: ${response.statusCode}');
       }
     } catch (e) {
       print('❌ Get Reading History Error: $e');
@@ -446,7 +507,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/MeterReading/GetCustomerStatement');
       print('📄 Get Customer Statement URL: $url');
-      
+
       final response = await http.post(
         url,
         headers: _getHeaders(),
@@ -458,7 +519,8 @@ class ApiService {
         }),
       );
 
-      print('📡 Get Customer Statement Response Status: ${response.statusCode}');
+      print(
+          '📡 Get Customer Statement Response Status: ${response.statusCode}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -472,7 +534,8 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> submitComplaint(Complaint complaint) async {
+  static Future<Map<String, dynamic>> submitComplaint(
+      Complaint complaint) async {
     if (_authToken == null || _authToken!.isEmpty) {
       throw Exception('No auth token available. Please login first.');
     }
@@ -480,7 +543,7 @@ class ApiService {
     try {
       final url = Uri.parse('$baseUrl/api/Complaint/submit');
       print('📝 Submit Complaint URL: $url');
-      
+
       final requestBody = complaint.toJson();
       print('📝 Request Body: ${jsonEncode(requestBody)}');
 
@@ -522,7 +585,8 @@ class ApiService {
     }
 
     try {
-      final url = Uri.parse('$baseUrl/api/Complaint/get?customerId=$customerId');
+      final url =
+          Uri.parse('$baseUrl/api/Complaint/get?customerId=$customerId');
       print('📋 Get Complaints URL: $url');
 
       final response = await http.get(

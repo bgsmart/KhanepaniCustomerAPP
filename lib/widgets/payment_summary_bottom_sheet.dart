@@ -6,18 +6,24 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
   final List<PaymentTopic> selectedTopics;
   final double totalAmount;
   final VoidCallback onConfirm;
+  final TextEditingController remarksController;
 
-  const PaymentSummaryBottomSheet({
-    super.key,
-    required this.selectedTopics,
-    required this.totalAmount,
-    required this.onConfirm,
-  });
+  const PaymentSummaryBottomSheet(
+      {super.key,
+      required this.selectedTopics,
+      required this.totalAmount,
+      required this.onConfirm,
+      required this.remarksController});
 
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 360;
+    final isMediumScreen = screenSize.width >= 360 && screenSize.width < 600;
+    final isLargeScreen = screenSize.width >= 600 && screenSize.width < 1200;
+    final isExtraLargeScreen = screenSize.width >= 1200;
 
     return Container(
       decoration: BoxDecoration(
@@ -39,9 +45,9 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               borderRadius: BorderRadius.circular(2),
             ),
           ),
-          
+
           const SizedBox(height: 16),
-          
+
           // Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -74,9 +80,9 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const Divider(height: 24),
-          
+
           // Selected items list
           Flexible(
             child: ListView.builder(
@@ -85,6 +91,7 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               itemCount: selectedTopics.length,
               itemBuilder: (context, index) {
                 final topic = selectedTopics[index];
+                print('topinObj :${topic.toJson()}');
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Row(
@@ -138,9 +145,61 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               },
             ),
           ),
-          
+
           const Divider(height: 24),
-          
+
+          Padding(
+            padding: const EdgeInsets.all(15.0),
+            child: TextFormField(
+              controller: remarksController,
+              style: const TextStyle(fontSize: 16),
+              decoration: InputDecoration(
+                hintText: 'Enter remarks',
+                hintStyle: const TextStyle(fontSize: 16),
+                filled: true,
+                fillColor: colorScheme.surface,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.outlineVariant,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.outlineVariant,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.primary,
+                    width: 2,
+                  ),
+                ),
+                errorBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: colorScheme.error,
+                  ),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: isSmallScreen ? 12 : 16,
+                  vertical: isSmallScreen ? 10 : 12,
+                ),
+              ),
+              validator: (value) {
+                if (value == null || value.isEmpty) {
+                  return 'Please enter your password';
+                }
+                if (value.length < 4) {
+                  return 'Password must be at least 4 characters';
+                }
+                return null;
+              },
+            ),
+          ),
+
           // Total
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 24),
@@ -185,9 +244,9 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 24),
-          
+
           // Action buttons
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -236,7 +295,7 @@ class PaymentSummaryBottomSheet extends StatelessWidget {
               ],
             ),
           ),
-          
+
           const SizedBox(height: 70),
         ],
       ),

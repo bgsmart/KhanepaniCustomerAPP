@@ -1,7 +1,10 @@
 // lib/screens/dashboard_screen.dart
+import 'package:KhanepaniApp/providers/payment_provider.dart';
 import 'package:KhanepaniApp/screens/payment_screen.dart';
+import 'package:KhanepaniApp/widgets/payment_summary_bottom_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../providers/auth_provider.dart';
 import '../widgets/bottom_nav_bar.dart';
 import '../widgets/dashboard/app_bar.dart';
@@ -24,6 +27,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
   // Consumption data
   List<double> _consumptionData = [];
   List<String> _months = [];
+  final remarksController = TextEditingController();
+  bool _isProcessing = false;
 
   @override
   void initState() {
@@ -51,17 +56,267 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   // ✅ Safe navigation methods using addPostFrameCallback
-  void _navigateToPayment() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+  void _navigateToPayment(String topic, double dueBalance) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final screenSize = MediaQuery.of(context).size;
+    final isSmallScreen = screenSize.width < 360;
+    showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => Container(
+              width: MediaQuery.sizeOf(context).width,
+              height: 300,
+              decoration: const BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.only(
+                      topLeft: Radius.circular(10),
+                      topRight: Radius.circular(10))),
+              child: Padding(
+                padding: const EdgeInsets.all(15),
+                child: Column(
+                  children: [
+                    const Text(
+                      "Due payment",
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.black),
+                      textScaler: TextScaler.linear(1.5),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: TextFormField(
+                        controller: remarksController,
+                        style: const TextStyle(fontSize: 16),
+                        decoration: InputDecoration(
+                          hintText: 'Enter remarks',
+                          hintStyle: const TextStyle(fontSize: 16),
+                          filled: true,
+                          fillColor: colorScheme.surface,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.outlineVariant,
+                            ),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.primary,
+                              width: 2,
+                            ),
+                          ),
+                          errorBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                            borderSide: BorderSide(
+                              color: colorScheme.error,
+                            ),
+                          ),
+                          contentPadding: EdgeInsets.symmetric(
+                            horizontal: isSmallScreen ? 12 : 16,
+                            vertical: isSmallScreen ? 10 : 12,
+                          ),
+                        ),
+                        validator: (value) {
+                          if (value == null || value.isEmpty) {
+                            return 'Please enter your password';
+                          }
+                          if (value.length < 4) {
+                            return 'Password must be at least 4 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.only(left: 15.0, right: 15),
+                      child: Container(
+                        width: MediaQuery.sizeOf(context).width,
+                        decoration: BoxDecoration(
+                            color: Colors.blue,
+                            borderRadius: BorderRadius.circular(10)),
+                        child: Padding(
+                          padding: const EdgeInsets.all(15.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Due Amount ',
+                                style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textScaler: TextScaler.linear(1.3),
+                              ),
+                              Text(
+                                'NPR. $dueBalance',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold),
+                                textScaler: const TextScaler.linear(1.3),
+                              )
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.all(15.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          InkWell(
+                            onTap: () {
+                              Navigator.pop(context);
+                            },
+                            child: Container(
+                              height: 45,
+                              width: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.grey,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Cancel',
+                                  style: TextStyle(
+                                      color: Colors.black, fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ),
+                          InkWell(
+                            onTap: () {
+                              _processPaymentWithEsewaIntent(topic, dueBalance);
+                            },
+                            child: Container(
+                              height: 45,
+                              width: 120,
+                              decoration: BoxDecoration(
+                                color: Colors.blue,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Center(
+                                child: Text(
+                                  'Confirm',
+                                  style: TextStyle(
+                                      color: Colors.white, fontSize: 16),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ));
+  }
+
+  Future<void> _processPaymentWithEsewaIntent(
+      String topic, double dueBalance) async {
+    if (_isProcessing) return;
+
+    final authProvider = context.read<AuthProvider>();
+    final paymentProvider = context.read<PaymentProvider>();
+
+    String customerId = '0';
+
+    if (authProvider.customerDetails != null) {
+      customerId = authProvider.customerDetails!.cusID ?? '0';
+      print('customer id : $customerId');
+    }
+
+    if (customerId == '0' || customerId.isEmpty) {
+      if (authProvider.currentUser != null) {
+        customerId = authProvider.currentUser!.customerId ?? '0';
+      }
+    }
+
+    if (customerId == '0' || customerId.isEmpty) {
       if (mounted) {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => const PaymentScreen(),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ Invalid Customer ID. Please login again.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
           ),
         );
       }
-    });
+      return;
+    }
+
+    setState(() => _isProcessing = true);
+
+    try {
+      // ✅ Generate unique transaction UUID
+      final transactionUuid = 'txn-${DateTime.now().millisecondsSinceEpoch}';
+
+      print('📝 Processing eSewa Intent Payment:');
+      print('👤 Customer ID: $customerId');
+      print('💰 Total Amount: $dueBalance');
+      print('📋 Transaction UUID: $transactionUuid');
+      print('remarks text : ${remarksController.text}');
+      print('payment topic : $topic');
+      // ✅ Step 1: Book Payment
+      final bookingResult = await AuthProvider.paymentMethod(
+          dueBalance.toString(),
+          'khanepani-local-001',
+          customerId,
+          remarksController.text,
+          '',
+          topic);
+      if (bookingResult!.success == false) {
+        throw Exception(bookingResult.message ?? 'Booking failed');
+      }
+
+      print('✅ Booking Successful:');
+      print('📝 esewa deeplink: ${bookingResult.deeplink}');
+
+      // ✅ Step 2: Launch eSewa app via deeplink
+      final launched = await launchUrl(
+        Uri.parse(bookingResult.deeplink ?? ''),
+        mode: LaunchMode.externalApplication,
+      );
+
+      if (!launched) {
+        final webUrl = bookingResult.deeplink ?? '';
+        await launchUrl(
+          Uri.parse(webUrl),
+          mode: LaunchMode.platformDefault,
+        );
+      }
+
+      // Show success message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                '✅ Payment initiated! Please complete payment in eSewa app.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      print('❌ eSewa Intent Payment Error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('❌ Payment failed: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      setState(() => _isProcessing = false);
+    }
   }
 
   void _navigateTo(String route) {
@@ -482,37 +737,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   // Right side: Pay Button
-                  // Expanded(
-                  //   flex: 1,
-                  //   child: ElevatedButton(
-                  //     onPressed: _navigateToPayment,
-                  //     style: ElevatedButton.styleFrom(
-                  //       backgroundColor: Colors.white,
-                  //       foregroundColor: hasDueBalance
-                  //           ? colorScheme.error
-                  //           : colorScheme.primary,
-                  //       padding: const EdgeInsets.symmetric(
-                  //         horizontal: 12,
-                  //         vertical: 6,
-                  //       ),
-                  //       minimumSize: Size.zero,
-                  //       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  //       shape: RoundedRectangleBorder(
-                  //         borderRadius: BorderRadius.circular(20),
-                  //       ),
-                  //     ),
-                  //     child: Text(
-                  //       hasDueBalance ? "Pay" : "Paid ✓",
-                  //       style: TextStyle(
-                  //         fontWeight: FontWeight.w600,
-                  //         fontSize: 10,
-                  //         color: hasDueBalance
-                  //             ? colorScheme.error
-                  //             : colorScheme.primary,
-                  //       ),
-                  //     ),
-                  //   ),
-                  // ),
+                  hasDueBalance
+                      ? Expanded(
+                          flex: 1,
+                          child: ElevatedButton(
+                            onPressed: () {
+                              _navigateToPayment("Bill Paymenet", dueBalance);
+                            },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.white,
+                              foregroundColor: hasDueBalance
+                                  ? colorScheme.error
+                                  : colorScheme.primary,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 6,
+                              ),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                            ),
+                            child: Text(
+                              hasDueBalance ? "Pay" : "Paid ✓",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 10,
+                                color: hasDueBalance
+                                    ? colorScheme.error
+                                    : colorScheme.primary,
+                              ),
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
                 ],
               ),
             ),
@@ -661,15 +920,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     )),
             QuickAction(
-              icon: Icons.payment,
-              label: 'Utility Payment',
-              onTap: () => ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Schedule feature coming soon!'),
-                  duration: Duration(seconds: 2),
-                ),
-              ),
-            ),
+                icon: Icons.payment,
+                label: 'Utility Payment',
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PaymentScreen(
+                        paymentTopic: 'Utility Payment',
+                      ),
+                    ),
+                  );
+                }),
             QuickAction(
               icon: Icons.receipt_long,
               label: 'Bills',
