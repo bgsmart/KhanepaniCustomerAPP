@@ -1,4 +1,7 @@
 // lib/screens/payment_screen.dart
+import 'package:KhanepaniApp/models/esewa_payment_status_model.dart';
+import 'package:KhanepaniApp/screens/dashboard_screen.dart';
+import 'package:KhanepaniApp/share_preference/share_preference.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -18,22 +21,98 @@ class PaymentScreen extends StatefulWidget {
   State<PaymentScreen> createState() => _PaymentScreenState();
 }
 
-class _PaymentScreenState extends State<PaymentScreen> {
+class _PaymentScreenState extends State<PaymentScreen>
+    with WidgetsBindingObserver {
   bool _isInitialized = false;
   bool _isProcessing = false;
+  bool _awaitingPayment = false;
+  bool _handlingReturn = false;
   final ScrollController _scrollController = ScrollController();
   final remarksController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _loadPaymentTopics();
     });
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed &&
+        _awaitingPayment &&
+        !_handlingReturn) {
+      _onReturnedFromEsewa();
+    }
+  }
+
+  Future<void> _onReturnedFromEsewa() async {
+    _handlingReturn = true;
+    try {
+      final status = await _verifyPayment();
+      if (!mounted) return;
+
+      _awaitingPayment = false;
+      await _showPaymentResultDialog(status);
+      if (!mounted) return;
+
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => const DashboardScreen()),
+        (route) => false,
+      );
+    } finally {
+      _handlingReturn = false;
+    }
+  }
+
+  Future<EsewaPaymentStatusModel> _verifyPayment() async {
+    final paymentModel = await SharePreference.getUtilityPayment();
+    print("paymenet model : ${paymentModel?.toJson()}");
+    try {
+      final result = await EsewaIntentService.checkStatus(
+        bookingId: paymentModel?.bookingId ?? '',
+        correlationId: paymentModel?.correlationId ?? '',
+      );
+      print("payment status result : ${result.toJson()}");
+      if (result.success == true) {
+        final authProvider = context.read<AuthProvider>();
+        final paymentProvider = context.read<PaymentProvider>();
+
+        String customerId = '0';
+        String customerName = '';
+
+        if (authProvider.customerDetails != null) {
+          customerId = authProvider.currentUser!.customerId ?? '0';
+          customerName = authProvider.currentUser!.name;
+          print('customer id : $customerId');
+          print('customer name : $customerName');
+        }
+        final receiptVerification = await EsewaIntentService.verifyReceipt(
+          customerCode: int.tryParse(customerId) ?? 0,
+          customerName: customerName,
+          topics: paymentProvider.selectedTopics,
+          totalAmout: paymentProvider.totalAmount.toStringAsFixed(0),
+        );
+        if (receiptVerification.success == true) {
+          SharePreference.setReceiptCode(receiptVerification.strValues);
+          print(
+              '✅ Receipt verification successful: ${receiptVerification.message}');
+        } else {
+          print(
+              '❌ Receipt verification failed: ${receiptVerification.message}');
+        }
+      }
+      return result;
+    } catch (e) {
+      throw Exception("Payment verification failed: ${e.toString()}");
+    }
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _scrollController.dispose();
     remarksController.dispose();
     super.dispose();
@@ -73,7 +152,10 @@ class _PaymentScreenState extends State<PaymentScreen> {
         selectedTopics: paymentProvider.selectedTopics,
         totalAmount: paymentProvider.totalAmount,
         remarksController: remarksController,
-        onConfirm: _processPaymentWithEsewaIntent,
+        onConfirm: () {
+          Navigator.of(context).pop(); // Close the bottom sheet
+          _processPaymentWithEsewaIntent();
+        },
       ),
     );
   }
@@ -144,32 +226,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
           remarksController.text,
           selectedSns,
           widget.paymentTopic);
-      // final bookingResult = await EsewaIntentService.bookPayment(
-      //   amount: amount,
-      //   transactionUuid: transactionUuid,
-      //   callbackUrl: EsewaConfigConstants.callbackUrl,
-      //   redirectUrl: EsewaConfigConstants.redirectUrl,
-      //   properties: properties,
-      // );
 
       if (bookingResult!.success == false) {
         throw Exception(bookingResult.message ?? 'Booking failed');
       }
 
-      // final bookingData = bookingResult['data'];
-      // final deeplink = bookingData['deeplink'];
-      // final bookingId = bookingData['booking_id'];
-      // final correlationId = bookingData['correlation_id'];
-
       print('✅ Booking Successful:');
       print('📝 esewa deeplink: ${bookingResult.deeplink}');
-      // print('🔗 Deeplink: $deeplink');
 
-      // ✅ Store booking info for status check
-      // You can store this in SharedPreferences or a global state
-      // For now, we'll pass it to the launcher
-
-      // ✅ Step 2: Launch eSewa app via deeplink
       final launched = await launchUrl(
         Uri.parse(bookingResult.deeplink ?? ''),
         mode: LaunchMode.externalApplication,
@@ -182,10 +246,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
           mode: LaunchMode.platformDefault,
         );
       }
-
-      // ✅ Step 3: Start polling for status (optional)
-      // You can implement a polling mechanism to check payment status
-      // For now, we'll rely on the callback URL
+      _awaitingPayment = true;
 
       // Show success message
       if (mounted) {
@@ -210,37 +271,37 @@ class _PaymentScreenState extends State<PaymentScreen> {
         );
       }
     } finally {
-      setState(() => _isProcessing = false);
+      if (mounted) setState(() => _isProcessing = false);
     }
   }
 
   // ✅ Check Payment Status Manually (Optional)
-  Future<void> _checkPaymentStatus({
-    required String bookingId,
-    required String correlationId,
-  }) async {
-    try {
-      final result = await EsewaIntentService.checkStatus(
-        bookingId: bookingId,
-        correlationId: correlationId,
-      );
+  // Future<void> _checkPaymentStatus({
+  //   required String bookingId,
+  //   required String correlationId,
+  // }) async {
+  //   try {
+  //     final result = await EsewaIntentService.checkStatus(
+  //       bookingId: bookingId,
+  //       correlationId: correlationId,
+  //     );
 
-      if (result['success']) {
-        final data = result['data'];
-        final status = data['status'];
+  //     if (result['success']) {
+  //       final data = result['data'];
+  //       final status = data['status'];
 
-        print('📊 Payment Status: $status');
+  //       print('📊 Payment Status: $status');
 
-        if (status == 'SUCCESS') {
-          // Handle success
-        } else if (status == 'FAILED' || status == 'CANCELED') {
-          // Handle failure
-        }
-      }
-    } catch (e) {
-      print('❌ Status check error: $e');
-    }
-  }
+  //       if (status == 'SUCCESS') {
+  //         // Handle success
+  //       } else if (status == 'FAILED' || status == 'CANCELED') {
+  //         // Handle failure
+  //       }
+  //     }
+  //   } catch (e) {
+  //     print('❌ Status check error: $e');
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -525,5 +586,125 @@ class _PaymentScreenState extends State<PaymentScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _showPaymentResultDialog(EsewaPaymentStatusModel data) async {
+    final recieptCode = await SharePreference.getReceiptCode();
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Column(
+          children: [
+            const Icon(Icons.mark_as_unread, color: Colors.orange, size: 56),
+            const SizedBox(height: 12),
+            Text(data.status, textAlign: TextAlign.center),
+          ],
+        ),
+        content: SizedBox(
+          height:100,
+          width: MediaQuery.sizeOf(context).width,
+          child: Column(children: [
+            Text("Receipt Code: $recieptCode", textAlign: TextAlign.center),
+            const SizedBox(height: 8),
+            Text(data.message, textAlign: TextAlign.center),
+          ]),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  onTap: () async {
+                    final cancelResult = await cancelPayment(data.bookingId);
+                    if (cancelResult['success'] == true) {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text('${cancelResult['message']}'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                            builder: (_) => const DashboardScreen()),
+                        (route) => false,
+                      );
+                    } else {
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                              '❌ Cancellation failed: ${cancelResult['message']}'),
+                          backgroundColor: Colors.red,
+                          duration: const Duration(seconds: 3),
+                        ),
+                      );
+                    }
+                  },
+                  child: Container(
+                    height: 40,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.grey[200],
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text('Cancel Booking',
+                          style: TextStyle(color: Colors.black),
+                          textAlign: TextAlign.center,
+                          textScaler: TextScaler.linear(0.9)),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: InkWell(
+                  onTap: () => Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (_) => const DashboardScreen()),
+                    (route) => false,
+                  ),
+                  child: Container(
+                    height: 40,
+                    width: 120,
+                    decoration: BoxDecoration(
+                      color: Colors.blue,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Center(
+                      child: Text('Go to Dashboard',
+                          style: TextStyle(color: Colors.white),
+                          textAlign: TextAlign.center,
+                          textScaler: TextScaler.linear(0.9)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<Map<String, dynamic>> cancelPayment(String bookingId) async {
+    final paymentModel = await SharePreference.getUtilityPayment();
+    print("Cancel model : ${paymentModel?.toJson()}");
+    try {
+      final result = await EsewaIntentService.cancelPayment(
+        bookingId: paymentModel?.bookingId ?? '',
+      );
+      print(
+          "Cancel payment result : ${result.map((key, value) => MapEntry(key, value.toString()))}");
+      return result;
+    } catch (e) {
+      throw Exception("Payment cancellation failed: ${e.toString()}");
+    }
   }
 }

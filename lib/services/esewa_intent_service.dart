@@ -1,29 +1,35 @@
 // lib/services/esewa_intent_service.dart
 import 'dart:convert';
 import 'dart:math';
+import 'package:KhanepaniApp/config/app_config.dart';
+import 'package:KhanepaniApp/models/esewa_payment_status_model.dart';
+import 'package:KhanepaniApp/models/payment_topic.dart';
+import 'package:KhanepaniApp/models/reciept_model.dart';
 import 'package:crypto/crypto.dart';
 import 'package:http/http.dart' as http;
 import '../config/esewa_config.dart';
 
 class EsewaIntentService {
-  static const String baseUrl = 'https://rc-checkout.esewa.com.np/api/client/intent/payment';
+  static const String baseUrl =
+      'https://rc-checkout.esewa.com.np/api/client/intent/payment';
   static const String productCode = 'INTENT';
-  
+
   // ✅ Access Key for development
   static const String accessKey = 'LB0REg8HUSw3MTYrI1s6JTE8Kyc6JyAqJiA3MQ==';
 
   // ✅ Generate HMAC SHA256 Signature
-  static String generateSignature(Map<String, String> params, String accessKey) {
+  static String generateSignature(
+      Map<String, String> params, String accessKey) {
     // Step 1: Create message from signed fields
     final signedFields = params['signed_field_names']?.split(',') ?? [];
     final message = signedFields.map((field) => params[field] ?? '').join(',');
-    
+
     // Step 2: Generate HMAC SHA256 hash
     final key = utf8.encode(accessKey);
     final msg = utf8.encode(message);
     final hmacSha256 = Hmac(sha256, key);
     final digest = hmacSha256.convert(msg);
-    
+
     // Step 3: Encode to Base64
     return base64.encode(digest.bytes);
   }
@@ -48,7 +54,7 @@ class EsewaIntentService {
 
       // Generate signature
       final signature = generateSignature(params, accessKey);
-      
+
       // Prepare request body
       final requestBody = {
         'product_code': productCode,
@@ -103,30 +109,14 @@ class EsewaIntentService {
   }
 
   // ✅ Check Payment Status
-  static Future<Map<String, dynamic>> checkStatus({
+  static Future<EsewaPaymentStatusModel> checkStatus({
     required String bookingId,
     required String correlationId,
   }) async {
     try {
-      // Prepare signed fields
-      final signedFieldNames = ['booking_id', 'product_code', 'correlation_id'];
-      final params = {
-        'booking_id': bookingId,
-        'product_code': productCode,
-        'correlation_id': correlationId,
-        'signed_field_names': signedFieldNames.join(','),
-      };
-
-      // Generate signature
-      final signature = generateSignature(params, accessKey);
-      
-      // Prepare request body
       final requestBody = {
         'booking_id': bookingId,
-        'product_code': productCode,
         'correlation_id': correlationId,
-        'signed_field_names': signedFieldNames.join(','),
-        'signature': signature,
       };
 
       print('📝 eSewa Status Check Request:');
@@ -134,10 +124,11 @@ class EsewaIntentService {
 
       // Make API call
       final response = await http.post(
-        Uri.parse('$baseUrl/status'),
+        Uri.parse(
+            'https://test.ismart.devanasoft.com.np/api/special-esewa-khanepani/status'),
         headers: {
+          "Authorization": "Bearer 11c1e25b-4303-4a7c-999c-fd34ba03866b",
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
         body: jsonEncode(requestBody),
       );
@@ -147,26 +138,14 @@ class EsewaIntentService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return {
-          'success': data['code'] == 'IP-200',
-          'data': data['data'],
-          'message': data['message'],
-          'code': data['code'],
-        };
+        return EsewaPaymentStatusModel.fromJson(data);
       } else {
-        final data = jsonDecode(response.body);
-        return {
-          'success': false,
-          'message': data['error_message'] ?? 'Status check failed',
-          'code': data['code'] ?? 'ERROR',
-        };
+        throw Exception(
+            "Payment failed :${response.statusCode} - ${response.body}");
       }
     } catch (e) {
-      print('❌ eSewa Status Check Error: $e');
-      return {
-        'success': false,
-        'message': 'Network error: ${e.toString()}',
-      };
+      print('status exception :$e');
+      throw Exception("Check Status error :$e");
     }
   }
 
@@ -176,39 +155,26 @@ class EsewaIntentService {
   }) async {
     try {
       // Prepare signed fields
-      final signedFieldNames = ['booking_id', 'product_code'];
-      final params = {
+      final body = {
         'booking_id': bookingId,
-        'product_code': productCode,
-        'signed_field_names': signedFieldNames.join(','),
-      };
-
-      // Generate signature
-      final signature = generateSignature(params, accessKey);
-      
-      // Prepare request body
-      final requestBody = {
-        'booking_id': bookingId,
-        'product_code': productCode,
-        'signed_field_names': signedFieldNames.join(','),
-        'signature': signature,
       };
 
       print('📝 eSewa Cancel Payment Request:');
-      print(jsonEncode(requestBody));
+      print(jsonEncode(body));
 
       // Make API call
       final response = await http.post(
-        Uri.parse('$baseUrl/cancel'),
+        Uri.parse(
+            'https://test.ismart.devanasoft.com.np/api/special-esewa-khanepani/cancel'),
         headers: {
+          "Authorization": "Bearer 11c1e25b-4303-4a7c-999c-fd34ba03866b",
           'Content-Type': 'application/json',
-          'Accept': 'application/json',
         },
-        body: jsonEncode(requestBody),
+        body: jsonEncode(body),
       );
 
       print('📡 eSewa Cancel Payment Response: ${response.statusCode}');
-      print('📡 Response Body: ${response.body}');
+      print('📡 Cancel Payment Response Body: ${response.body}');
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
@@ -235,19 +201,78 @@ class EsewaIntentService {
     }
   }
 
+  //receipt verification
+  static Future<ReceiptModel> verifyReceipt({
+    required int customerCode,
+    required String customerName,
+    required List<PaymentTopic> topics,
+    required String totalAmout,
+  }) async {
+    try {
+      final requestBody = {
+        'clientCODE': 2,
+        'accountNo': customerCode,
+        'customerName': customerName,
+        'topics': topics
+            .map((t) => {
+                  'sn': t.sn,
+                  'name': t.name,
+                  'rate': t.rate,
+                })
+            .toList(),
+        'deposit': 0,
+        'advance': 0,
+        'postBy': 'app',
+        'remarks': 'Receipt Verification',
+        'fields': 'string',
+        'values': 'string',
+        'total': double.parse(totalAmout),
+      };
+
+      print('📝 eSewa Receipt Verification Request:');
+      print("print receipt request : ${jsonEncode(requestBody)}");
+
+      // Make API call
+
+      final response = await http.post(
+        Uri.parse('${AppConfig.baseUrl}/api/MeterReading/PostReceipt'),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(requestBody),
+      );
+      print("url : ${AppConfig.baseUrl}/api/MeterReading/PostReceipt");
+
+      print('📡 eSewa Receipt Verification Response: ${response.statusCode}');
+      print('📡 Receipt Verification Response Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final paymnetModel = jsonDecode(response.body);
+        return ReceiptModel.fromJson(paymnetModel);
+      } else {
+        throw Exception(
+            "Payment failed :${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      print('❌ eSewa Receipt Verification Error: $e');
+      throw Exception("Receipt verification error: ${e.toString()}");
+    }
+  }
+
   // ✅ Verify Callback Signature
   static bool verifyCallbackSignature(Map<String, dynamic> callbackData) {
     try {
-      final signedFields = (callbackData['signed_field_names'] as String).split(',');
+      final signedFields =
+          (callbackData['signed_field_names'] as String).split(',');
       final params = <String, String>{};
-      
+
       for (var field in signedFields) {
         params[field] = callbackData[field]?.toString() ?? '';
       }
-      
+
       final providedSignature = callbackData['signature'] as String;
       final expectedSignature = generateSignature(params, accessKey);
-      
+
       return providedSignature == expectedSignature;
     } catch (e) {
       print('❌ Callback verification error: $e');

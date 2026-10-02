@@ -1,5 +1,6 @@
 // lib/providers/auth_provider.dart
 import 'package:KhanepaniApp/models/UtilityPayementModelResponse.dart';
+import 'package:KhanepaniApp/share_preference/share_preference.dart';
 import 'package:flutter/material.dart';
 import '../config/app_config.dart';
 import '../models/user.dart';
@@ -282,24 +283,15 @@ class AuthProvider extends ChangeNotifier {
       String remarks,
       String counterCode,
       String customerCode) async {
-    // _isLoading = true;
-    // _errorMessage = null;
-    // notifyListeners();
     try {
       final paymentResponse = await ApiService.globalPayment(amount,
           transactionUUID, custonerID, remarks, counterCode, customerCode);
-      // _isLoading = false;
-      // notifyListeners();
+      SharePreference.setUtilityPayment(paymentResponse);
       return paymentResponse;
     } catch (e) {
-      // _errorMessage = 'Failed to authenticate: ${e.toString()}';
-      // _isLoading = false;
-      // notifyListeners();
       rethrow;
     }
   }
-
-  // Update Password (Alternative endpoint using customer ID)
   Future<bool> updatePassword({
     required int customerID,
     required String oldPassword,
